@@ -10,7 +10,13 @@ import type {
 
 // Set the worker source before any PDF operations.
 // The pdf.worker.min.mjs file is served from public/ (copied by next.config.ts).
-GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+const workerBasePath =
+  typeof self !== 'undefined' &&
+  self.location &&
+  self.location.pathname.startsWith('/ghostdocs')
+    ? '/ghostdocs'
+    : '';
+GlobalWorkerOptions.workerSrc = `${workerBasePath}/pdf.worker.min.mjs`;
 
 // ─── Main message handler ──────────────────────────────────────────────────
 

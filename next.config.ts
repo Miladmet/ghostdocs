@@ -70,9 +70,13 @@ class CopyPdfWorkerPlugin {
 // Next.js configuration
 // =============================================================================
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
 const nextConfig: NextConfig = {
   // Static export — no Node.js server at runtime.
   output: "export",
+  basePath: basePath || undefined,
+  assetPrefix: basePath || undefined,
 
   // Images must be unoptimised for static export (no server-side optimizer).
   images: {
