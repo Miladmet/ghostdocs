@@ -1,0 +1,21 @@
+{
+  "name": "Question Asked — Crew Retrieval & Citation Integrity Hook",
+  "version": "1.0.0",
+  "description": "Verifies that when a question is asked, context retrieval (rankByCosine), Researcher agent synthesis, mandatory verbatim citations (R-PBT-1), confidence scoring (R-PBT-2), and IndexedDB answer persistence remain compliant.",
+  "trigger": {
+    "type": "onFileSave",
+    "patterns": [
+      "lib/search.ts",
+      "lib/agents/researcher.ts",
+      "components/ghostdocs/SearchBar.tsx",
+      "components/ghostdocs/ResearcherPanel.tsx"
+    ]
+  },
+  "enabled": false,
+  "actions": [
+    {
+      "type": "agentPrompt",
+      "prompt": "Verify that the question-answering pipeline: (1) retrieves top-5 chunks via requestIdleCallback cosine similarity, (2) invokes the Researcher agent with zero external network calls, (3) attaches verbatim citations (<=50 words) satisfying R-PBT-1 and uncertainty notices when confidence < 0.6, and (4) stores the AnswerRecord in IndexedDB. Run `npx vitest run tests/unit/researcher.test.ts tests/unit/search.test.ts`."
+    }
+  ]
+}

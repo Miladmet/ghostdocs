@@ -1,0 +1,21 @@
+{
+  "name": "Time Capsule Created — Summary, Timeline & Schema Hook",
+  "version": "1.0.0",
+  "description": "Verifies that Time Capsule creation generates 1–200 word Archivist summaries, builds the chronological Historian timeline (R-PBT-3), and bundles Float32Array embeddings with forward-compatible capsuleVersion schema validation.",
+  "trigger": {
+    "type": "onFileSave",
+    "patterns": [
+      "lib/capsule.ts",
+      "lib/agents/archivist.ts",
+      "lib/agents/historian.ts",
+      "components/ghostdocs/CapsuleControls.tsx"
+    ]
+  },
+  "enabled": false,
+  "actions": [
+    {
+      "type": "agentPrompt",
+      "prompt": "Verify that Time Capsule creation: (1) generates 1–200 word extractive summaries for each document via the Archivist, (2) reconstructs chronological TimelineEntryRecords sorted ascending by resolvedDate (R-PBT-3) via the Historian, and (3) serialises/deserialises Float32Array vectors with capsuleVersion validation. Run `npx vitest run tests/unit/capsule.test.ts tests/unit/historian.test.ts`."
+    }
+  ]
+}

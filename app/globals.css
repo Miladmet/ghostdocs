@@ -1,0 +1,109 @@
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+
+/* ----------------------------------------
+   Base resets and HTML shell (layered so
+   Tailwind v4 @layer utilities take precedence)
+---------------------------------------- */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    max-width: 100vw;
+    overflow-x: hidden;
+    min-height: 100dvh;
+    background-color: #0a0a0f; /* ghost-void */
+    color: #fdf8f0; /* parchment-100 */
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+/* ----------------------------------------
+   Global focus ring (WCAG 2.2 SC 2.4.11)
+   ≥2px width, ≥3:1 contrast vs background
+---------------------------------------- */
+:focus-visible {
+  outline: 2px solid #b980ff; /* specter-300 — passes 3:1 on ghost-void */
+  outline-offset: 2px;
+}
+
+/* ----------------------------------------
+   Reduced-motion override
+   Suppresses all decorative animations
+   (Req 10.7)
+---------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ----------------------------------------
+   Scrollbar styling (Kiroween aesthetic)
+---------------------------------------- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f0f1a; /* ghost-crypt */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #5200b3; /* specter-700 */
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #7c1dff; /* specter-500 */
+}
+
+/* ----------------------------------------
+   Selection styling
+---------------------------------------- */
+::selection {
+  background-color: rgba(124, 29, 255, 0.3); /* specter-500 30% */
+  color: #fdf8f0;
+}
+
+/* ----------------------------------------
+   shadcn/ui CSS variables — Kiroween theme
+   These power the shadcn component primitives
+---------------------------------------- */
+:root {
+  --background: 0 0% 4%;           /* ghost-void approx */
+  --foreground: 33 83% 97%;        /* parchment-100 approx */
+  --card: 240 33% 8%;              /* ghost-crypt */
+  --card-foreground: 33 83% 97%;
+  --popover: 240 33% 8%;
+  --popover-foreground: 33 83% 97%;
+  --primary: 265 100% 55%;         /* specter-500 */
+  --primary-foreground: 33 83% 97%;
+  --secondary: 240 25% 15%;        /* ghost-tomb */
+  --secondary-foreground: 33 83% 97%;
+  --muted: 240 25% 12%;
+  --muted-foreground: 33 40% 60%;
+  --accent: 43 100% 50%;           /* glow-400 */
+  --accent-foreground: 0 0% 4%;
+  --destructive: 349 100% 65%;     /* shade-error */
+  --destructive-foreground: 33 83% 97%;
+  --border: 240 20% 20%;
+  --input: 240 25% 12%;
+  --ring: 274 80% 74%;             /* specter-300 */
+  --radius: 0.5rem;
+}

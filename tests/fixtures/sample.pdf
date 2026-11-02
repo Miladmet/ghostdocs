@@ -1,0 +1,74 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 5 0 R 7 0 R] /Count 3 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 9 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 218 >>
+stream
+BT
+/F1 12 Tf
+50 720 Td
+(GhostDocs Archival Dossier - Author: Clara Vance) Tj
+0 -24 Td
+(The project launched on 2023-06-15 to resurrect forgotten organizational knowledge.) Tj
+0 -24 Td
+(Canary token: ghostdocs-canary-secret-phrase-xq7z verified inside local browser vault.) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 9 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 164 >>
+stream
+BT
+/F1 12 Tf
+50 720 Td
+(Historical Audit Log Page 2) Tj
+0 -24 Td
+(On the fourteenth of March 2022 the engineering council approved the local IndexedDB schema.) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 9 0 R >> >> /Contents 8 0 R >>
+endobj
+8 0 obj
+<< /Length 158 >>
+stream
+BT
+/F1 12 Tf
+50 720 Td
+(Fiscal Forecast Page 3) Tj
+0 -24 Td
+(During Q3 FY2024 the security team completed the Web Worker embedding pipeline review.) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000123 00000 n 
+0000000249 00000 n 
+0000000518 00000 n 
+0000000644 00000 n 
+0000000859 00000 n 
+0000000985 00000 n 
+0000001194 00000 n 
+trailer
+<< /Size 10 /Root 1 0 R >>
+startxref
+1262
+%%EOF
