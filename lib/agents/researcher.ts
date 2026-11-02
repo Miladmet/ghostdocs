@@ -8,6 +8,55 @@ import type { AnswerRecord, ChunkRecord, CitationRecord } from '@/lib/db';
 
 export type ScoredChunk = ChunkRecord & { score: number };
 
+const QUERY_STOPWORDS = new Set([
+  'what', 'when', 'where', 'which', 'who', 'whom', 'whose', 'why', 'how',
+  'is', 'are', 'was', 'were', 'be', 'been', 'being', 'do', 'does', 'did',
+  'happened', 'happen', 'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for',
+  'of', 'with', 'by', 'from', 'about', 'tell', 'me', 'about', 'explain'
+]);
+
+/**
+ * Extracts sentences from chunk text that best match question keywords.
+ */
+function extractRelevantSentences(text: string, question: string, maxSentences: number = 2): string {
+  if (!text) return '';
+  const qTokens = question
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !QUERY_STOPWORDS.has(w));
+
+  // Split into sentences (by period, newline, or punctuation followed by whitespace)
+  const rawSentences = text
+    .split(/(?<=[.!?\n])\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 10);
+
+  if (rawSentences.length === 0) {
+    return extractVerbatimPassage(text, 50);
+  }
+
+  // Score sentences by token overlap
+  const scored = rawSentences.map((s) => {
+    const sLower = s.toLowerCase();
+    let matches = 0;
+    for (const t of qTokens) {
+      if (sLower.includes(t)) matches++;
+    }
+    return { sentence: s, matches };
+  });
+
+  scored.sort((a, b) => b.matches - a.matches);
+  const top = scored.filter((s) => s.matches > 0).slice(0, maxSentences);
+
+  if (top.length > 0) {
+    return top.map((s) => s.sentence).join(' ');
+  }
+
+  // Fallback to first non-empty sentence or first passage
+  return rawSentences[0] || extractVerbatimPassage(text, 50);
+}
+
 /**
  * Extracts a verbatim substring of at most 50 whitespace-delimited words from `text`.
  * Guarantees `text.includes(excerpt)` for any non-empty input string (Property 1 / R-PBT-1).
@@ -129,15 +178,24 @@ export function synthesiseAnswer(
     buildCitation(chunk, chunk.score, documentNames[chunk.documentId] ?? chunk.documentId)
   );
 
-  // Build answer text strictly from the retrieved passages (Req 4.7)
-  const passageSummaries = citations.map((c, idx) => {
-    const loc =
-      c.pageNumber !== null ? `p. ${c.pageNumber}` : c.lineSection ?? 'section 1';
-    return `[${idx + 1}] From ${c.documentName} (${loc}): "${c.excerpt}"`;
+  // Synthesise a direct informative synthesis from the most relevant chunk passages
+  const primaryChunk = usedChunks[0];
+  const primaryDoc = documentNames[primaryChunk.documentId] ?? primaryChunk.documentId;
+  const primaryLoc = primaryChunk.pageNumber !== null ? `p. ${primaryChunk.pageNumber}` : `section 1`;
+  const primaryExcerpt = extractRelevantSentences(primaryChunk.text, questionText, 2);
+
+  // Additional supporting findings from other chunks
+  const supportingPassages = usedChunks.slice(1).map((c, idx) => {
+    const docName = documentNames[c.documentId] ?? c.documentId;
+    const loc = c.pageNumber !== null ? `p. ${c.pageNumber}` : `section 1`;
+    const snippet = extractRelevantSentences(c.text, questionText, 1);
+    return `• [${idx + 2}] From ${docName} (${loc}): "${snippet}"`;
   });
 
-  const synthesisedText =
-    `Based on the uploaded documents:\n` + passageSummaries.join('\n');
+  let synthesisedText = `According to ${primaryDoc} (${primaryLoc}):\n"${primaryExcerpt}"`;
+  if (supportingPassages.length > 0) {
+    synthesisedText += `\n\nSupporting evidence from retrieved passages:\n${supportingPassages.join('\n')}`;
+  }
 
   let uncertaintyNotice: string | null = null;
   if (confidenceScore < 0.6) {
