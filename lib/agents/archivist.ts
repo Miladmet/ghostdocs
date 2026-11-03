@@ -81,7 +81,7 @@ export function extractMetadataFromChunks(
     }
   }
 
-  // 3. Author: look for "Author: ...", "By ...", "Prepared by ..."
+  // 3. Author: look for "Author: ...", "By ...", "PHOTO OF THE AUTHOR, <NAME>", or all-caps name patterns
   let author: string | null = null;
   const authorMatch = combinedText.match(
     /\b(?:Author|Prepared by|Written by)\s*[:\-]\s*([A-Za-z0-9\s.,'-]{2,50})/i
@@ -89,12 +89,20 @@ export function extractMetadataFromChunks(
   if (authorMatch && authorMatch[1]) {
     author = authorMatch[1].split(/\r?\n|\.|;/)[0].trim() || null;
   } else {
-    // If using "By: Name" or "By Name", ensure it matches a proper person's name (2-3 words, capitalized)
-    const byMatch = combinedText.match(
-      /\bBy\s*[:\-]?\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b/
+    // Check for "PHOTO OF THE AUTHOR, <NAME>" or "AUTHOR, <NAME>" (common in books)
+    const authorPhotoMatch = combinedText.match(
+      /\bAUTHOR\s*,\s*([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){1,2})\b/i
     );
-    if (byMatch && byMatch[1]) {
-      author = byMatch[1].trim() || null;
+    if (authorPhotoMatch && authorPhotoMatch[1]) {
+      author = authorPhotoMatch[1].trim() || null;
+    } else {
+      // If using "By: Name" or "By Name", ensure it matches a proper person's name (2-3 words)
+      const byMatch = combinedText.match(
+        /\bBy\s*[:\-]?\s+([A-Za-z]+(?:\s+[A-Za-z]+){1,2})\b/i
+      );
+      if (byMatch && byMatch[1]) {
+        author = byMatch[1].trim() || null;
+      }
     }
   }
 
@@ -105,6 +113,12 @@ export function extractMetadataFromChunks(
       author.split(/\s+/).length > 4
     ) {
       author = null;
+    } else {
+      // Normalize casing (e.g. "NAPOLEON HILL" -> "Napoleon Hill")
+      author = author
+        .split(/\s+/)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(' ');
     }
   }
 
