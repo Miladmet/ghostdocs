@@ -84,10 +84,28 @@ export function extractMetadataFromChunks(
   // 3. Author: look for "Author: ...", "By ...", "Prepared by ..."
   let author: string | null = null;
   const authorMatch = combinedText.match(
-    /(?:Author|Prepared by|Written by|By)\s*[:\-]\s*([A-Z][A-Za-z0-9\s.,'-]{1,50})/i
+    /\b(?:Author|Prepared by|Written by)\s*[:\-]\s*([A-Za-z0-9\s.,'-]{2,50})/i
   );
   if (authorMatch && authorMatch[1]) {
     author = authorMatch[1].split(/\r?\n|\.|;/)[0].trim() || null;
+  } else {
+    // If using "By: Name" or "By Name", ensure it matches a proper person's name (2-3 words, capitalized)
+    const byMatch = combinedText.match(
+      /\bBy\s*[:\-]?\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b/
+    );
+    if (byMatch && byMatch[1]) {
+      author = byMatch[1].trim() || null;
+    }
+  }
+
+  // Clean author name: remove phrases like "step recap of..." or sentences
+  if (author) {
+    if (
+      /\b(step|recap|summary|view|process|chapter|section|edition|table|content|page)\b/i.test(author) ||
+      author.split(/\s+/).length > 4
+    ) {
+      author = null;
+    }
   }
 
   const documentType = resolveDocumentType(mimeType, filename);

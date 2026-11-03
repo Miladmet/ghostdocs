@@ -16,17 +16,40 @@ const QUERY_STOPWORDS = new Set([
 ]);
 
 /**
- * Extracts sentences from chunk text that best match question keywords.
+ * Extracts question keywords (filtering stopwords).
  */
-function extractRelevantSentences(text: string, question: string, maxSentences: number = 2): string {
-  if (!text) return '';
-  const qTokens = question
+function getQuestionKeywords(question: string): string[] {
+  return question
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/)
-    .filter((w) => w.length > 2 && !QUERY_STOPWORDS.has(w));
+    .filter((w) => w.length >= 2 && !QUERY_STOPWORDS.has(w));
+}
 
-  // Split into sentences (by period, newline, or punctuation followed by whitespace)
+/**
+ * Scores how well a text matches question keywords, giving bonus to exact number/date/entity matches.
+ */
+function scoreSentenceRelevance(sentence: string, keywords: string[]): number {
+  const sLower = sentence.toLowerCase();
+  let score = 0;
+  for (const k of keywords) {
+    if (sLower.includes(k)) {
+      // Extra weight for numbers / dates (e.g. "12", "1900", "december")
+      const isDateOrNumber = /^\d+$/.test(k) || ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'].includes(k);
+      score += isDateOrNumber ? 3 : 1;
+    }
+  }
+  return score;
+}
+
+/**
+ * Extracts the best sentence or contiguous passage matching the question keywords.
+ */
+function extractRelevantSentences(text: string, question: string, maxSentences: number = 2): string {
+  if (!text) return '';
+  const keywords = getQuestionKeywords(question);
+
+  // Split into sentences
   const rawSentences = text
     .split(/(?<=[.!?\n])\s+/)
     .map((s) => s.trim())
@@ -36,24 +59,18 @@ function extractRelevantSentences(text: string, question: string, maxSentences: 
     return extractVerbatimPassage(text, 50);
   }
 
-  // Score sentences by token overlap
-  const scored = rawSentences.map((s) => {
-    const sLower = s.toLowerCase();
-    let matches = 0;
-    for (const t of qTokens) {
-      if (sLower.includes(t)) matches++;
-    }
-    return { sentence: s, matches };
-  });
+  const scored = rawSentences.map((s) => ({
+    sentence: s,
+    score: scoreSentenceRelevance(s, keywords)
+  }));
 
-  scored.sort((a, b) => b.matches - a.matches);
-  const top = scored.filter((s) => s.matches > 0).slice(0, maxSentences);
+  scored.sort((a, b) => b.score - a.score);
+  const top = scored.filter((s) => s.score > 0).slice(0, maxSentences);
 
   if (top.length > 0) {
     return top.map((s) => s.sentence).join(' ');
   }
 
-  // Fallback to first non-empty sentence or first passage
   return rawSentences[0] || extractVerbatimPassage(text, 50);
 }
 
@@ -178,14 +195,26 @@ export function synthesiseAnswer(
     buildCitation(chunk, chunk.score, documentNames[chunk.documentId] ?? chunk.documentId)
   );
 
-  // Synthesise a direct informative synthesis from the most relevant chunk passages
-  const primaryChunk = usedChunks[0];
-  const primaryDoc = documentNames[primaryChunk.documentId] ?? primaryChunk.documentId;
-  const primaryLoc = primaryChunk.pageNumber !== null ? `p. ${primaryChunk.pageNumber}` : `section 1`;
-  const primaryExcerpt = extractRelevantSentences(primaryChunk.text, questionText, 2);
+  // Identify the single chunk with the highest keyword relevance to answer the question directly
+  const keywords = getQuestionKeywords(questionText);
+  let bestChunk = usedChunks[0];
+  let highestKeywordScore = -1;
 
-  // Additional supporting findings from other chunks
-  const supportingPassages = usedChunks.slice(1).map((c, idx) => {
+  for (const chunk of usedChunks) {
+    const s = scoreSentenceRelevance(chunk.text, keywords);
+    if (s > highestKeywordScore) {
+      highestKeywordScore = s;
+      bestChunk = chunk;
+    }
+  }
+
+  const primaryDoc = documentNames[bestChunk.documentId] ?? bestChunk.documentId;
+  const primaryLoc = bestChunk.pageNumber !== null ? `p. ${bestChunk.pageNumber}` : `section 1`;
+  const primaryExcerpt = extractRelevantSentences(bestChunk.text, questionText, 2);
+
+  // Remaining chunks as supporting citations
+  const otherChunks = usedChunks.filter((c) => c.chunkId !== bestChunk.chunkId);
+  const supportingPassages = otherChunks.map((c, idx) => {
     const docName = documentNames[c.documentId] ?? c.documentId;
     const loc = c.pageNumber !== null ? `p. ${c.pageNumber}` : `section 1`;
     const snippet = extractRelevantSentences(c.text, questionText, 1);
