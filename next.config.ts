@@ -70,7 +70,7 @@ class CopyPdfWorkerPlugin {
 // Next.js configuration
 // =============================================================================
 
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "/ghostdocs";
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 const nextConfig: NextConfig = {
   // Static export — no Node.js server at runtime.

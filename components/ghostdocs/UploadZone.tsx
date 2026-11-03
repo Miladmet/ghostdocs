@@ -171,7 +171,7 @@ export function UploadZone({
         }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
-        className={`animate-ghost-appear cursor-pointer rounded-xl border-2 border-dashed p-6 text-center transition-all duration-150 ${
+        className={`animate-ghost-appear cursor-pointer rounded-xl border-2 border-dashed p-6 text-center transition-all duration-150 focus:outline-2 focus:outline-glow-400 focus:outline-offset-2 focus-visible:outline-2 focus-visible:outline-glow-400 focus-visible:outline-offset-2 ${
           isDragging
             ? "border-glow-400 bg-ghost-tomb shadow-glow-sm"
             : "border-specter-700 bg-ghost-crypt hover:border-specter-400 hover:shadow-glow-sm"
