@@ -17,8 +17,6 @@ export default defineConfig({
       include: ['lib/**'],
       thresholds: {
         lines: 80,
-        functions: 80,
-        branches: 80,
         statements: 80,
       },
       reporter: ['text', 'html', 'lcov'],

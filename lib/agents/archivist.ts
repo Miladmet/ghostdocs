@@ -91,17 +91,27 @@ export function extractMetadataFromChunks(
   } else {
     // Check for "PHOTO OF THE AUTHOR, <NAME>" or "AUTHOR, <NAME>" (common in books)
     const authorPhotoMatch = combinedText.match(
-      /\bAUTHOR\s*,\s*([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){1,2})\b/i
+      /\bAUTHOR\s*,\s*([A-Z][A-Za-z]+(?:[ \t]+[A-Z][A-Za-z]+){1,2})\b/i
     );
     if (authorPhotoMatch && authorPhotoMatch[1]) {
       author = authorPhotoMatch[1].trim() || null;
     } else {
-      // If using "By: Name" or "By Name", ensure it matches a proper person's name (2-3 words)
-      const byMatch = combinedText.match(
-        /\bBy\s*[:\-]?\s+([A-Za-z]+(?:\s+[A-Za-z]+){1,2})\b/i
+      // If using "By: Name" or "By Name", check the rest of the line
+      const byLineMatch = combinedText.match(
+        /\bBy\s*[:\-]?\s*([^\r\n]{2,60})/i
       );
-      if (byMatch && byMatch[1]) {
-        author = byMatch[1].trim() || null;
+      if (byLineMatch && byLineMatch[1]) {
+        const candidate = byLineMatch[1].split(/\.|;|,/)[0].trim();
+        const words = candidate.split(/\s+/).filter(Boolean);
+        // Proper name candidate: 1 to 3 words, each capitalized, not common noise
+        if (
+          words.length >= 1 &&
+          words.length <= 3 &&
+          words.every((w) => /^[A-Z][a-z]+$/i.test(w)) &&
+          !words.some((w) => /^(the|and|or|a|an|step|recap|summary|view|process|chapter|section|edition|table|content|page)$/i.test(w))
+        ) {
+          author = words.join(' ');
+        }
       }
     }
   }
