@@ -4,9 +4,9 @@ import path from 'path';
 test.use({
   video: {
     mode: 'on',
-    size: { width: 1280, height: 720 },
+    size: { width: 1920, height: 1080 },
   },
-  viewport: { width: 1280, height: 720 },
+  viewport: { width: 1920, height: 1080 },
 });
 
 test('record full ghostdocs video walkthrough', async ({ page }) => {
@@ -14,6 +14,9 @@ test('record full ghostdocs video walkthrough', async ({ page }) => {
 
   // 1. Visit GhostDocs homepage
   await page.goto('/');
+  await page.evaluate(() => {
+    document.body.style.zoom = '125%';
+  });
   await page.waitForTimeout(3000);
 
   // 2. Upload sample.md

@@ -112,9 +112,15 @@ async def main():
     print(f"\nTimeline verification passed! Final speech ends at {current_time:.2f}s (video is 62.6s).")
 
     print("\n=== Step 3: Stitch Single Sequential Audio Track ===")
-    # Total video duration: 62.6s at 24000 Hz sample rate
+    input_video = os.path.join(PROJECT_DIR, "ghostdocs-demo-walkthrough.webm")
+    try:
+        video_duration = get_audio_duration(input_video)
+        print(f"  Detected input video duration: {video_duration:.2f}s")
+    except Exception:
+        video_duration = 63.0
+
     SAMPLE_RATE = 24000
-    TOTAL_SAMPLES = int(62.6 * SAMPLE_RATE)
+    TOTAL_SAMPLES = int((video_duration + 1.0) * SAMPLE_RATE)
     master_samples = bytearray(TOTAL_SAMPLES * 2) # 16-bit PCM = 2 bytes/sample
     
     for item in timeline:
