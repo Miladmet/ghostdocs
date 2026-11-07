@@ -13,8 +13,8 @@ Enforce this at every layer:
 
 ## Core Technologies
 
-### Next.js 15
-- Version: 15.x (App Router).
+### Next.js 16
+- Version: 16.x (App Router).
 - Config: `output: 'export'` — produces a fully static build deployable to any static host.
 - Use server components only for static layout/shell; no server components touch document data.
 - Client components that use browser APIs must be guarded with `'use client'` and dynamic imports where needed for SSR compatibility during the build step.

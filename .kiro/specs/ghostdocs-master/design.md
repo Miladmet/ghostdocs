@@ -6,7 +6,7 @@ GhostDocs is a fully browser-local application that ingests PDF, Markdown, and p
 
 The design is built on five architectural pillars:
 
-1. **Static Next.js 15 export** (`output: 'export'`) — no server-side rendering of document content; the application is a pure client-side SPA deployed to any static host.
+1. **Static Next.js 16 export** (`output: 'export'`) — no server-side rendering of document content; the application is a pure client-side SPA deployed to any static host.
 2. **Web Workers for all heavy processing** — PDF parsing, chunking, and offline lexical embedding generation (deterministic, no model download) run in dedicated workers so the main thread is never blocked for more than 50 ms.
 3. **IndexedDB via Dexie.js** — the single source of truth for all persistent state (documents, chunks, embeddings, timelines, answers, capsules), accessed only from the main thread or worker threads, never from API routes.
 4. **Kiroween dark-mode-only theme** — a spooky-professional palette defined entirely as Tailwind `theme.extend` tokens, with WCAG AA contrast compliance and ≤ 200 ms entry transitions.

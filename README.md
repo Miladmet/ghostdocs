@@ -2,6 +2,8 @@
 
 > **100% Browser-Local Multi-Agent Knowledge Resurrection Engine · Built with Kiro Spec-Driven Development**
 
+> ⚡ **Instant Live Demo for Judges:** Visit [https://miladmet.github.io/ghostdocs/](https://miladmet.github.io/ghostdocs/), click **🔮 Load Sample Vault (Instant Demo)**, and click either suggested question pill to see the full AI Crew synthesis, verbatim citations, and timeline in 5 seconds.
+
 GhostDocs is a privacy-first, browser-only application that resurrects institutional memory from forgotten PDF, Markdown, and Plain-Text documents. Powered by Web Workers, IndexedDB (Dexie.js), PDF.js, and local 384-dimensional lexical vector embeddings (`ghostdocs-lexical-hash-384-v1`), GhostDocs coordinates a three-agent AI Crew (**The Archivist**, **The Historian**, and **The Researcher**) to surface source-cited answers, chronological timelines, and portable **Time Capsules**—without a single byte of document content ever leaving your browser tab.
 
 ---

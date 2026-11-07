@@ -1,5 +1,7 @@
 # GhostDocs — Devpost Hackathon Submission & 3-Minute Demo Script
 
+> ⚡ **Instant Live Demo for Judges:** Visit [https://miladmet.github.io/ghostdocs/](https://miladmet.github.io/ghostdocs/), click **🔮 Load Sample Vault (Instant Demo)**, and click either suggested question pill to see the full AI Crew synthesis, verbatim citations, and timeline in 5 seconds.
+
 ---
 
 ## Part 1: Devpost Submission Write-up (Prompt 14)
