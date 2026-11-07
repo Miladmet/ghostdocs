@@ -14,9 +14,12 @@ import * as path from "path";
 //
 // CSP rationale:
 //   script-src 'unsafe-eval'        — required by Next.js dev mode
-//   script-src 'wasm-unsafe-eval'   — required by Transformers.js (WASM)
+//   script-src 'wasm-unsafe-eval'   — required by PDF.js WASM image decoders (JPX/OpenJPEG,
+//                                     JBIG2, QCMS) used inside workers/parser.worker.ts
 //   worker-src 'self' blob:         — Web Workers loaded from same-origin + blob:
-//   connect-src huggingface.co etc. — model weights downloaded by Transformers.js
+//   connect-src 'self'              — same-origin only: the app makes no cross-origin
+//                                     requests (embeddings are computed offline, no model
+//                                     download)
 //   object-src 'none'               — no plugins
 //   base-uri 'self'                 — prevent base-tag hijacking
 //
@@ -24,7 +27,7 @@ const CSP =
   "default-src 'self'; " +
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; " +
   "worker-src 'self' blob:; " +
-  "connect-src 'self' https://huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co; " +
+  "connect-src 'self'; " +
   "style-src 'self' 'unsafe-inline'; " +
   "img-src 'self' data: blob:; " +
   "font-src 'self'; " +

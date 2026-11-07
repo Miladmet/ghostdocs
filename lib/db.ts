@@ -60,7 +60,7 @@ export interface ChunkRecord {
 
 export interface EmbeddingRecord {
   chunkId: string;               // Primary key — matches ChunkRecord.chunkId
-  vector: Float32Array;          // 384-dimensional (Xenova/all-MiniLM-L6-v2)
+  vector: Float32Array;          // 384-dimensional (ghostdocs-lexical-hash-384-v1, L2-normalised)
 }
 
 // ─── Citation ──────────────────────────────────────────────────────────────

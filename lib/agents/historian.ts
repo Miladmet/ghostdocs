@@ -144,83 +144,84 @@ export function extractTimelineFromChunks(
     const docName = documentNames[chunk.documentId] ?? chunk.documentId;
     const text = chunk.text;
 
+    // Spans [start, end) already claimed by a more specific pattern in this chunk.
+    const claimed: Array<[number, number]> = [];
+    const overlaps = (s: number, e: number): boolean =>
+      claimed.some(([cs, ce]) => s < ce && cs < e);
+
+    const makeExplicit = (
+      m: RegExpExecArray,
+      resolvedDate: string,
+      confidenceScore: number,
+      uncertaintyNotice: string | null
+    ): TimelineEntryRecord => ({
+      entryId: uuidv4(),
+      eventDescription: extractVerbatimExcerpt(text, m.index).slice(0, 500),
+      resolvedDate,
+      resolvedDateEnd: null,
+      confidenceScore,
+      citations: [buildTimelineCitation(chunk, docName, m.index)],
+      uncertaintyNotice,
+      isImplicit: false,
+      sessionId,
+    });
+
+    // Runs a pattern, skipping overlapping matches and claiming accepted spans.
+    const scan = (
+      regex: RegExp,
+      build: (m: RegExpExecArray) => TimelineEntryRecord
+    ): void => {
+      let m: RegExpExecArray | null;
+      while ((m = regex.exec(text)) !== null) {
+        const start = m.index;
+        const end = start + m[0].length;
+        if (overlaps(start, end)) continue;
+        claimed.push([start, end]);
+        entries.push(build(m));
+      }
+    };
+
+    const MONTH_PAT =
+      '(January|February|March|April|May|June|July|August|September|October|November|December)';
+
     // 1. Explicit ISO 8601 dates: YYYY-MM-DD
-    const isoRegex = /\b(\d{4}-\d{2}-\d{2})\b/g;
-    let match: RegExpExecArray | null;
-    while ((match = isoRegex.exec(text)) !== null) {
-      const dateStr = match[1];
-      const excerpt = extractVerbatimExcerpt(text, match.index);
-      entries.push({
-        entryId: uuidv4(),
-        eventDescription: excerpt.slice(0, 500),
-        resolvedDate: dateStr,
-        resolvedDateEnd: null,
-        confidenceScore: 0.95,
-        citations: [buildTimelineCitation(chunk, docName, match.index)],
-        uncertaintyNotice: null,
-        isImplicit: false,
-        sessionId,
-      });
-    }
+    scan(/\b(\d{4}-\d{2}-\d{2})\b/g, (m) =>
+      makeExplicit(m, m[1], 0.95, null)
+    );
 
     // 2. Written dates with ordinal words: e.g., "fourteenth of March 2022"
-    const ordinalRegex =
-      /\b(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|nineteenth|twentieth)\s+of\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b/gi;
-    while ((match = ordinalRegex.exec(text)) !== null) {
-      const day = ORDINAL_WORDS[match[1].toLowerCase()] ?? '01';
-      const month = MONTHS_MAP[match[2].toLowerCase()] ?? '01';
-      const year = match[3];
-      const resolvedDate = `${year}-${month}-${day}`;
-      const excerpt = extractVerbatimExcerpt(text, match.index);
-      entries.push({
-        entryId: uuidv4(),
-        eventDescription: excerpt.slice(0, 500),
-        resolvedDate,
-        resolvedDateEnd: null,
-        confidenceScore: 0.88,
-        citations: [buildTimelineCitation(chunk, docName, match.index)],
-        uncertaintyNotice: null,
-        isImplicit: false,
-        sessionId,
-      });
-    }
-
-    // 3. Written dates: "14 September 2024", "March 14, 2022", or "September 2021"
-    const writtenDateRegex =
-      /\b(?:(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})|(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(\d{4})|(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4}))\b/gi;
-    while ((match = writtenDateRegex.exec(text)) !== null) {
-      let resolvedDate: string;
-      if (match[1] && match[2] && match[3]) {
-        const day = match[1].padStart(2, '0');
-        const month = MONTHS_MAP[match[2].toLowerCase()] ?? '01';
-        resolvedDate = `${match[3]}-${month}-${day}`;
-      } else if (match[4] && match[5] && match[6]) {
-        const day = match[5].padStart(2, '0');
-        const month = MONTHS_MAP[match[4].toLowerCase()] ?? '01';
-        resolvedDate = `${match[6]}-${month}-${day}`;
-      } else {
-        const month = MONTHS_MAP[(match[7] ?? 'january').toLowerCase()] ?? '01';
-        resolvedDate = `${match[8]}-${month}-01`;
+    scan(
+      new RegExp(
+        `\\b(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|nineteenth|twentieth)\\s+of\\s+${MONTH_PAT}\\s+(\\d{4})\\b`,
+        'gi'
+      ),
+      (m) => {
+        const day = ORDINAL_WORDS[m[1].toLowerCase()] ?? '01';
+        const month = MONTHS_MAP[m[2].toLowerCase()] ?? '01';
+        return makeExplicit(m, `${m[3]}-${month}-${day}`, 0.88, null);
       }
-      const excerpt = extractVerbatimExcerpt(text, match.index);
-      entries.push({
-        entryId: uuidv4(),
-        eventDescription: excerpt.slice(0, 500),
-        resolvedDate,
-        resolvedDateEnd: null,
-        confidenceScore: 0.85,
-        citations: [buildTimelineCitation(chunk, docName, match.index)],
-        uncertaintyNotice: null,
-        isImplicit: false,
-        sessionId,
-      });
-    }
+    );
+
+    // 3. Written dates, most specific first: "14 September 2024", "March 14, 2022",
+    // then month-year "September 2021". Separate passes guarantee that a full date
+    // always claims its span before a month-year match can.
+    scan(new RegExp(`\\b(\\d{1,2})\\s+${MONTH_PAT}\\s+(\\d{4})\\b`, 'gi'), (m) => {
+      const month = MONTHS_MAP[m[2].toLowerCase()] ?? '01';
+      return makeExplicit(m, `${m[3]}-${month}-${m[1].padStart(2, '0')}`, 0.85, null);
+    });
+    scan(new RegExp(`\\b${MONTH_PAT}\\s+(\\d{1,2}),?\\s+(\\d{4})\\b`, 'gi'), (m) => {
+      const month = MONTHS_MAP[m[1].toLowerCase()] ?? '01';
+      return makeExplicit(m, `${m[3]}-${month}-${m[2].padStart(2, '0')}`, 0.85, null);
+    });
+    scan(new RegExp(`\\b${MONTH_PAT}\\s+(\\d{4})\\b`, 'gi'), (m) => {
+      const month = MONTHS_MAP[m[1].toLowerCase()] ?? '01';
+      return makeExplicit(m, `${m[2]}-${month}-01`, 0.85, null);
+    });
 
     // 4. Fiscal year / quarter references: e.g., "Q3 FY2024", "FY2024", "Q3 2024"
-    const fiscalRegex = /\b(?:(Q[1-4])\s*)?(?:FY\s*(\d{4})|(Q[1-4])\s+(\d{4}))\b/gi;
-    while ((match = fiscalRegex.exec(text)) !== null) {
-      const quarter = (match[1] ?? match[3] ?? 'Q1').toUpperCase();
-      const year = match[2] ?? match[4];
+    scan(/\b(?:(Q[1-4])\s*)?(?:FY\s*(\d{4})|(Q[1-4])\s+(\d{4}))\b/gi, (m) => {
+      const quarter = (m[1] ?? m[3] ?? 'Q1').toUpperCase();
+      const year = m[2] ?? m[4];
       const quarterMonth: Record<string, string> = {
         Q1: '01',
         Q2: '04',
@@ -228,26 +229,20 @@ export function extractTimelineFromChunks(
         Q4: '10',
       };
       const month = quarterMonth[quarter] ?? '01';
-      const resolvedDate = `${year}-${month}-01`;
-      const excerpt = extractVerbatimExcerpt(text, match.index);
-      entries.push({
-        entryId: uuidv4(),
-        eventDescription: excerpt.slice(0, 500),
-        resolvedDate,
-        resolvedDateEnd: null,
-        confidenceScore: 0.82,
-        citations: [buildTimelineCitation(chunk, docName, match.index)],
-        uncertaintyNotice: `Date ambiguity: "${match[0]}" could refer to either the fiscal year (${quarter} FY${year}) or calendar year ${year}; the documents do not clarify the organisation's fiscal calendar boundaries.`,
-        isImplicit: false,
-        sessionId,
-      });
-    }
+      return makeExplicit(
+        m,
+        `${year}-${month}-01`,
+        0.82,
+        `Date ambiguity: "${m[0]}" could refer to either the fiscal year (${quarter} FY${year}) or calendar year ${year}; the documents do not clarify the organisation's fiscal calendar boundaries.`
+      );
+    });
 
     // 5. Implicit temporal signals: "previous quarter", "following the merger", etc.
     const implicitRegex =
       /\b(in the previous quarter|the previous quarter|following the merger|after the restructuring|prior quarter|in the prior year|shortly thereafter)\b/gi;
+    let match: RegExpExecArray | null;
     while ((match = implicitRegex.exec(text)) !== null) {
-      // Only add as an unresolved implicit entry if this match didn't already have an explicit date in the same clause
+      if (overlaps(match.index, match.index + match[0].length)) continue;
       const excerpt = extractVerbatimExcerpt(text, match.index);
       entries.push({
         entryId: uuidv4(),
@@ -262,7 +257,6 @@ export function extractTimelineFromChunks(
       });
     }
   }
-
   return sortTimelineEntries(entries);
 }
 

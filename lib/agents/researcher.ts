@@ -43,37 +43,83 @@ function scoreSentenceRelevance(sentence: string, keywords: string[]): number {
 }
 
 /**
- * Extracts the best sentence or contiguous passage matching the question keywords.
+ * Returns the character span of the single most relevant sentence in `text`
+ * (scored by question keywords). Falls back to the first sentence, or the
+ * whole text when no sentence can be identified. Never joins sentences.
  */
-function extractRelevantSentences(text: string, question: string, maxSentences: number = 2): string {
-  if (!text) return '';
+export function findRelevantSpan(text: string, question: string): { start: number; end: number } {
+  if (!text) return { start: 0, end: 0 };
   const keywords = getQuestionKeywords(question);
 
-  // Split into sentences
-  const rawSentences = text
-    .split(/(?<=[.!?\n])\s+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 10);
-
-  if (rawSentences.length === 0) {
-    return extractVerbatimPassage(text, 50);
+  const spans: { start: number; end: number }[] = [];
+  const re = /\S[\s\S]*?(?:[.!?\n]+(?=\s|$)|$)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m[0].length === 0) { re.lastIndex++; continue; }
+    const raw = m[0];
+    const trimmed = raw.replace(/\s+$/, '');
+    if (trimmed.length > 10) {
+      spans.push({ start: m.index, end: m.index + trimmed.length });
+    }
   }
 
-  const scored = rawSentences.map((s) => ({
-    sentence: s,
-    score: scoreSentenceRelevance(s, keywords)
-  }));
-
-  scored.sort((a, b) => b.score - a.score);
-  const top = scored.filter((s) => s.score > 0).slice(0, maxSentences);
-
-  if (top.length > 0) {
-    return top.map((s) => s.sentence).join(' ');
+  if (spans.length === 0) {
+    const first = text.search(/\S/);
+    return first === -1 ? { start: 0, end: 0 } : { start: first, end: text.replace(/\s+$/, '').length };
   }
 
-  return rawSentences[0] || extractVerbatimPassage(text, 50);
+  let best = spans[0];
+  let bestScore = 0;
+  for (const sp of spans) {
+    const sc = scoreSentenceRelevance(text.slice(sp.start, sp.end), keywords);
+    if (sc > bestScore) {
+      bestScore = sc;
+      best = sp;
+    }
+  }
+  return best;
 }
 
+/**
+ * Returns a contiguous verbatim substring of `text` with at most `maxWords` words,
+ * centred on `span`. If the span itself exceeds `maxWords`, returns the first
+ * `maxWords` words starting at the span start.
+ */
+export function extractExcerptAround(
+  text: string,
+  span: { start: number; end: number },
+  maxWords: number = 50
+): string {
+  if (!text) return '';
+  const words: { start: number; end: number }[] = [];
+  const re = /\S+/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    words.push({ start: m.index, end: m.index + m[0].length });
+  }
+  if (words.length === 0 || maxWords < 1) return extractVerbatimPassage(text, maxWords);
+
+  let fw = words.findIndex((w) => w.end > span.start);
+  if (fw === -1) fw = words.length - 1;
+  let lw = fw;
+  for (let i = fw; i < words.length && words[i].start < span.end; i++) lw = i;
+
+  const n = lw - fw + 1;
+  let s: number;
+  let e: number;
+  if (n >= maxWords) {
+    s = fw;
+    e = fw + maxWords - 1;
+  } else {
+    const extra = maxWords - n;
+    s = fw - Math.floor(extra / 2);
+    e = lw + (extra - Math.floor(extra / 2));
+    if (s < 0) { e -= s; s = 0; }
+    if (e > words.length - 1) { s -= e - (words.length - 1); e = words.length - 1; }
+    s = Math.max(0, s);
+  }
+  return text.slice(words[s].start, words[e].end);
+}
 /**
  * Extracts a verbatim substring of at most 50 whitespace-delimited words from `text`.
  * Guarantees `text.includes(excerpt)` for any non-empty input string (Property 1 / R-PBT-1).
@@ -111,10 +157,13 @@ export function extractVerbatimPassage(text: string, maxWords: number = 50): str
 export function buildCitation(
   chunk: ChunkRecord,
   score: number = 1.0,
-  documentName?: string
+  documentName?: string,
+  question?: string
 ): CitationRecord {
   void score;
-  const excerpt = extractVerbatimPassage(chunk.text, 50);
+  const excerpt = question
+    ? extractExcerptAround(chunk.text, findRelevantSpan(chunk.text, question), 50)
+    : extractVerbatimPassage(chunk.text, 50);
 
   return {
     chunkId: chunk.chunkId,
@@ -192,7 +241,7 @@ export function synthesiseAnswer(
   }
 
   const citations = usedChunks.map((chunk) =>
-    buildCitation(chunk, chunk.score, documentNames[chunk.documentId] ?? chunk.documentId)
+    buildCitation(chunk, chunk.score, documentNames[chunk.documentId] ?? chunk.documentId, questionText)
   );
 
   // Identify the single chunk with the highest keyword relevance to answer the question directly
@@ -210,14 +259,14 @@ export function synthesiseAnswer(
 
   const primaryDoc = documentNames[bestChunk.documentId] ?? bestChunk.documentId;
   const primaryLoc = bestChunk.pageNumber !== null ? `p. ${bestChunk.pageNumber}` : `section 1`;
-  const primaryExcerpt = extractRelevantSentences(bestChunk.text, questionText, 2);
+  const primaryExcerpt = citations[usedChunks.indexOf(bestChunk)].excerpt;
 
   // Remaining chunks as supporting citations
-  const otherChunks = usedChunks.filter((c) => c.chunkId !== bestChunk.chunkId);
+  const otherChunks = usedChunks.filter((c) => c !== bestChunk);
   const supportingPassages = otherChunks.map((c, idx) => {
     const docName = documentNames[c.documentId] ?? c.documentId;
     const loc = c.pageNumber !== null ? `p. ${c.pageNumber}` : `section 1`;
-    const snippet = extractRelevantSentences(c.text, questionText, 1);
+    const snippet = citations[usedChunks.indexOf(c)].excerpt;
     return `• [${idx + 2}] From ${docName} (${loc}): "${snippet}"`;
   });
 

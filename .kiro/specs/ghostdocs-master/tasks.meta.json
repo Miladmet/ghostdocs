@@ -67,6 +67,16 @@
         "executionId": "3530950e-da29-4ccb-9241-a5120c4cd62a",
         "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
         "timestamp": 1793565076272
+      },
+      {
+        "executionId": "f2511c02-e669-4cf0-8996-00ad8311dd56",
+        "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
+        "timestamp": 1794076351116
+      },
+      {
+        "executionId": "f2511c02-e669-4cf0-8996-00ad8311dd56",
+        "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
+        "timestamp": 1794076838493
       }
     ],
     "2.1 Implement `tailwind.config.ts` with all Kiroween design tokens": [
@@ -232,6 +242,16 @@
         "executionId": "3530950e-da29-4ccb-9241-a5120c4cd62a",
         "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
         "timestamp": 1793567047501
+      },
+      {
+        "executionId": "854b67a4-9797-4035-976d-2e8724826313",
+        "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
+        "timestamp": 1794075886808
+      },
+      {
+        "executionId": "854b67a4-9797-4035-976d-2e8724826313",
+        "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
+        "timestamp": 1794076081905
       }
     ],
     "8.1 Create `lib/agents/archivist.ts`": [
@@ -256,6 +276,16 @@
         "executionId": "3530950e-da29-4ccb-9241-a5120c4cd62a",
         "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
         "timestamp": 1793567054188
+      },
+      {
+        "executionId": "854b67a4-9797-4035-976d-2e8724826313",
+        "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
+        "timestamp": 1794075886614
+      },
+      {
+        "executionId": "854b67a4-9797-4035-976d-2e8724826313",
+        "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
+        "timestamp": 1794076081671
       }
     ],
     "8.3 Create `lib/agents/researcher.ts`": [
@@ -263,6 +293,26 @@
         "executionId": "3530950e-da29-4ccb-9241-a5120c4cd62a",
         "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
         "timestamp": 1793561488611
+      },
+      {
+        "executionId": "edb18540-e2f6-4917-b237-e02f7515877a",
+        "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
+        "timestamp": 1794075424402
+      },
+      {
+        "executionId": "edb18540-e2f6-4917-b237-e02f7515877a",
+        "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
+        "timestamp": 1794075545099
+      },
+      {
+        "executionId": "854b67a4-9797-4035-976d-2e8724826313",
+        "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
+        "timestamp": 1794075886929
+      },
+      {
+        "executionId": "854b67a4-9797-4035-976d-2e8724826313",
+        "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
+        "timestamp": 1794076082067
       }
     ],
     "9.1 Verify all required shadcn/ui components are installed and apply Kiroween token overrides": [
@@ -371,6 +421,16 @@
         "executionId": "3530950e-da29-4ccb-9241-a5120c4cd62a",
         "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
         "timestamp": 1793561491837
+      },
+      {
+        "executionId": "edb18540-e2f6-4917-b237-e02f7515877a",
+        "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
+        "timestamp": 1794075424579
+      },
+      {
+        "executionId": "edb18540-e2f6-4917-b237-e02f7515877a",
+        "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
+        "timestamp": 1794075545242
       }
     ],
     "12.1 Create `components/ghostdocs/GhostDocsApp.tsx` as the root client orchestrator": [

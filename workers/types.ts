@@ -98,7 +98,7 @@ export interface EmbedCompleteMessage {
   type: 'EMBED_COMPLETE';
   chunkId?: string;          // Present for EMBED_CHUNK responses
   requestId?: string;        // Present for EMBED_QUERY responses
-  vector: Float32Array;      // 384-dimensional (all-MiniLM-L6-v2 output), Transferable
+  vector: Float32Array;      // 384-dimensional lexical feature vector, Transferable
 }
 
 export type EmbedErrorCode =

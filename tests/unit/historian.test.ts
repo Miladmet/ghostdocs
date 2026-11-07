@@ -103,4 +103,90 @@ describe('lib/agents/historian.ts (Req 5.1–5.8, R-PBT-3)', () => {
       { numRuns: 100 }
     );
   });
-});
+
+  describe('overlap handling', () => {
+    const mk = (text: string): ChunkRecord => ({
+      chunkId: 'd-chunk-0',
+      documentId: 'd',
+      text,
+      pageNumber: 1,
+      lineOffset: 0,
+      tokenCount: 10,
+      truncated: false,
+      chunkIndex: 0,
+      embeddingStatus: 'complete',
+    });
+
+    it('ordinal date yields a single entry (no month-year duplicate)', () => {
+      const entries = extractTimelineFromChunks([
+        mk('On the fourteenth of March 2022 the board met.'),
+      ]);
+      expect(entries).toHaveLength(1);
+      expect(entries[0].resolvedDate).toBe('2022-03-14');
+    });
+
+    it('day-month-year and month-day-year each yield a single full-date entry', () => {
+      const a = extractTimelineFromChunks([mk('Approved on 14 September 2024.')]);
+      expect(a).toHaveLength(1);
+      expect(a[0].resolvedDate).toBe('2024-09-14');
+      const b = extractTimelineFromChunks([mk('Signed March 14, 2022.')]);
+      expect(b).toHaveLength(1);
+      expect(b[0].resolvedDate).toBe('2022-03-14');
+    });
+
+    it('month-year plus implicit signal gives one explicit and one implicit entry', () => {
+      const entries = extractTimelineFromChunks([
+        mk('Following the merger in September 2021, staff moved.'),
+      ]);
+      const explicit = entries.filter((e) => !e.isImplicit);
+      const implicit = entries.filter((e) => e.isImplicit);
+      expect(explicit).toHaveLength(1);
+      expect(explicit[0].resolvedDate).toBe('2021-09-01');
+      expect(implicit).toHaveLength(1);
+      expect(implicit[0].eventDescription.toLowerCase()).toContain('following the merger');
+    });
+
+    it('Property: exactly one explicit entry per embedded date phrase', () => {
+      const MONTH_NAMES = [
+        'January', 'February', 'March', 'April', 'May', 'June', 'July',
+        'August', 'September', 'October', 'November', 'December',
+      ];
+      const ORDINALS = [
+        'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth',
+        'ninth', 'tenth', 'eleventh', 'twelfth', 'thirteenth', 'fourteenth',
+        'fifteenth', 'sixteenth', 'seventeenth', 'eighteenth', 'nineteenth', 'twentieth',
+      ];
+      const pad = (n: number): string => String(n).padStart(2, '0');
+      const dateArb = fc
+        .record({
+          kind: fc.constantFrom('ordinal', 'dmy', 'mdy', 'iso'),
+          day: fc.integer({ min: 1, max: 28 }),
+          month: fc.integer({ min: 1, max: 12 }),
+          year: fc.integer({ min: 1990, max: 2035 }),
+        })
+        .map(({ kind, day, month, year }) => {
+          const mn = MONTH_NAMES[month - 1];
+          const iso = `${year}-${pad(month)}-${pad(day)}`;
+          const useOrdinal = kind === 'ordinal' && day <= 20;
+          if (useOrdinal) {
+            return { phrase: `${ORDINALS[day - 1]} of ${mn} ${year}`, iso };
+          }
+          if (kind === 'mdy') return { phrase: `${mn} ${day}, ${year}`, iso };
+          if (kind === 'iso') return { phrase: iso, iso };
+          return { phrase: `${day} ${mn} ${year}`, iso };
+        });
+      const fillerArb = fc.array(
+        fc.constantFrom('the', 'board', 'met', 'report', 'was', 'signed', 'budget', 'staff', 'office'),
+        { maxLength: 6 }
+      );
+
+      fc.assert(
+        fc.property(fillerArb, fillerArb, dateArb, (before, after, d) => {
+          const text = [...before, d.phrase, ...after].join(' ');
+          const explicit = extractTimelineFromChunks([mk(text)]).filter((e) => !e.isImplicit);
+          return explicit.length === 1 && explicit[0].resolvedDate === d.iso;
+        }),
+        { numRuns: 100 }
+      );
+    });
+  });});

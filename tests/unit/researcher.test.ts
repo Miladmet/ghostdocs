@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import {
   buildCitation,
+  extractExcerptAround,
+  findRelevantSpan,
   synthesiseAnswer,
   type ScoredChunk,
 } from '@/lib/agents/researcher';
@@ -79,4 +81,66 @@ describe('lib/agents/researcher.ts (Req 4.1–4.9, R-PBT-1, R-PBT-2, Property 10
       { numRuns: 100 }
     );
   });
-});
+
+  describe('citation excerpt anchoring', () => {
+    const wc = (s: string) => s.trim().split(/\s+/).length;
+
+    it('centres the excerpt on the relevant sentence located late in a long chunk', () => {
+      const filler = Array.from({ length: 10 }, (_, i) =>
+        `Filler sentence number ${i} talks about unrelated office matters today.`
+      ).join(' ');
+      const target = 'The board approved the budget on 14 September after review.';
+      const chunk = makeChunk(`${filler} ${target}`);
+      expect(wc(chunk.text)).toBeGreaterThan(100);
+      const ans = synthesiseAnswer('When was the budget approved in September?', [
+        { ...chunk, score: 0.9 },
+      ]);
+      const excerpt = ans.citations[0].excerpt;
+      expect(excerpt).toContain(target);
+      expect(chunk.text.includes(excerpt)).toBe(true);
+      expect(wc(excerpt)).toBeLessThanOrEqual(50);
+      expect(ans.synthesisedText).toContain(excerpt);
+    });
+
+    it('returns exactly the first 50 words when the sentence exceeds 50 words', () => {
+      const words = Array.from({ length: 80 }, (_, i) => `word${i}`);
+      const text = `${words.join(' ')}.`;
+      const chunk = makeChunk(text);
+      const citation = buildCitation(chunk, 0.9, 'd.txt', 'word70 word71');
+      expect(citation.excerpt).toBe(words.slice(0, 50).join(' '));
+      expect(chunk.text.includes(citation.excerpt)).toBe(true);
+    });
+
+    it('extractExcerptAround / findRelevantSpan stay verbatim and bounded', () => {
+      const text = 'Alpha beta gamma delta epsilon. Zeta budget september eta theta.';
+      const span = findRelevantSpan(text, 'budget september');
+      expect(text.slice(span.start, span.end)).toBe('Zeta budget september eta theta.');
+      expect(extractExcerptAround(text, span, 5)).toBe('Zeta budget september eta theta.');
+    });
+
+    it('Property: excerpts are verbatim, <= 50 words, and quoted in the answer', () => {
+      const word = fc.stringMatching(/^[a-z]{3,8}$/);
+      const sentence = fc
+        .array(word, { minLength: 3, maxLength: 20 })
+        .map((ws) => `${ws.join(' ')}.`);
+      fc.assert(
+        fc.property(
+          fc.array(sentence, { minLength: 3, maxLength: 15 }),
+          fc.nat(),
+          (sentences, pick) => {
+            const chunk = makeChunk(sentences.join(' '));
+            const src = sentences[pick % sentences.length].replace('.', '').split(' ');
+            const question = `what about ${src.slice(0, 3).join(' ')}`;
+            const ans = synthesiseAnswer(question, [{ ...chunk, score: 0.9 }]);
+            const c = ans.citations[0];
+            return (
+              chunk.text.includes(c.excerpt) &&
+              wc(c.excerpt) <= 50 &&
+              ans.synthesisedText.includes(`"${c.excerpt}"`)
+            );
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+  });});

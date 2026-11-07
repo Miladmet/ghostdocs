@@ -49,12 +49,14 @@ Enforce this at every layer:
 - Extract text page-by-page; store page number alongside each text chunk for citation purposes.
 - Never block the main thread — wrap PDF parsing in a Web Worker.
 
-### Transformers.js (Web Workers for local embeddings)
-- Use `@xenova/transformers` (Transformers.js v2) or `@huggingface/transformers` (v3) for local embedding inference.
-- **Always run model inference in a dedicated Web Worker** — never import the pipeline directly in a React component or the main thread.
+### Offline embedding feature extractor (Web Worker)
+- Embeddings come from `computeDeterministicEmbedding` in `workers/embeddings.worker.ts`: a deterministic, hash-based 384-dimensional **lexical** feature extractor (word hashes, 4-char stems, character trigrams, tanh, L2 normalisation).
+- It runs fully offline: no model download, no network requests, no WASM.
+- It is **not** a neural or semantic model. It matches on shared words, stems and trigrams and does not understand synonyms. Do not describe search as "semantic" without that qualification.
+- Always run embedding generation in the dedicated Web Worker, never in a React component or on the main thread.
 - Communicate with the worker via `postMessage` / `onmessage`; use a typed message protocol defined in `workers/types.ts`.
-- Cache downloaded models in the browser cache (the library handles this automatically via `env.cacheDir`).
-- Default embedding model: `Xenova/all-MiniLM-L6-v2` (small, fast, good quality). Document this choice in `lib/embeddings.ts`.
+- Identifier: `ghostdocs-lexical-hash-384-v1` (`EMBEDDING_MODEL_ID` in the worker, `DEFAULT_EMBEDDING_MODEL` in `lib/embeddings.ts`). Bump it if the algorithm changes so stored vectors can be identified.
+- A neural model (e.g. all-MiniLM-L6-v2 via Transformers.js) is a possible opt-in future feature, only with explicit user consent for the download. `@xenova/transformers` remains in `package.json` but is currently unused.
 
 ---
 
@@ -71,7 +73,7 @@ Enforce this at every layer:
   chunker.ts          # Document chunking logic
   search.ts           # Vector similarity search (cosine)
 /workers
-  embeddings.worker.ts  # Transformers.js inference worker
+  embeddings.worker.ts  # Chunking + offline lexical feature extractor worker
   parser.worker.ts      # PDF.js + text parsing worker
   types.ts              # Shared message types for workers
 /public

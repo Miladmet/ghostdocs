@@ -18,7 +18,7 @@ Tasks are ordered by dependency: project scaffolding → data layer → worker i
     - _Requirements: 8.1 (no server-side processing), 9.1 (static export FCP target)_
 
   - [x] 1.2 Install and pin all runtime dependencies with exact versions
-    - Install (exact, no `^` or `~`): `dexie`, `pdfjs-dist`, `@xenova/transformers`, `uuid`
+    - Install (exact, no `^` or `~`): `dexie`, `pdfjs-dist`, `uuid` (`@xenova/transformers` was originally listed but has been removed; embeddings use the offline lexical extractor)
     - Install shadcn/ui peer deps: `@radix-ui/react-*` (via `npx shadcn@latest init`)
     - Install dev deps (exact): `typescript`, `@types/react`, `@types/node`, `vitest`, `@vitest/coverage-v8`, `fast-check`, `@playwright/test`, `@axe-core/playwright`
     - Verify `package.json` has zero `^` or `~` version prefixes for all entries
@@ -33,7 +33,7 @@ Tasks are ordered by dependency: project scaffolding → data layer → worker i
   - [x] 1.4 Create `next.config.ts` with static export, PDF.js worker copy, and CSP headers
     - Set `output: 'export'`, `images: { unoptimized: true }`
     - Add a `webpack` config hook that copies `node_modules/pdfjs-dist/build/pdf.worker.min.mjs` to `public/pdf.worker.min.mjs`
-    - Define Content Security Policy headers matching the design spec (`connect-src 'self' https://huggingface.co https://cdn-lfs.huggingface.co`, `worker-src 'self' blob:`, `wasm-unsafe-eval`)
+    - Define Content Security Policy headers matching the design spec (`connect-src 'self'`, `worker-src 'self' blob:`, `wasm-unsafe-eval`)
     - _Requirements: 8.1–8.5 (zero network leakage), tech steering (PDF.js worker in public/)_
 
 - [x] 2. Kiroween theme
@@ -96,17 +96,17 @@ Tasks are ordered by dependency: project scaffolding → data layer → worker i
     - Instantiate `embeddings.worker.ts` via `new Worker(new URL('../workers/embeddings.worker.ts', import.meta.url))`
     - Export `embedQuery(queryText: string): Promise<Float32Array>` — sends `EMBED_QUERY` with a UUID `requestId`, resolves on matching `EMBED_COMPLETE`, rejects on `EMBED_ERROR` or 10 s timeout
     - Export `onModelLoadProgress(cb: (progress: number, status: string) => void): void`
-    - Document the default model `Xenova/all-MiniLM-L6-v2` in a JSDoc comment
-    - _Requirements: 8.3 (model source), 4.10 (10s timeout), 9.4_
+    - Document the embedding implementation (offline lexical extractor `ghostdocs-lexical-hash-384-v1`, exported as `DEFAULT_EMBEDDING_MODEL`) in a header comment
+    - _Requirements: 8.3 (offline extractor), 4.10 (10s timeout), 9.4_
 
 - [x] 7. Embeddings Worker
   - [x] 7.1 Create `workers/embeddings.worker.ts` with Transformers.js inference and chunking logic
-    - Import `@xenova/transformers` pipeline; set `env.cacheDir` to enable browser cache persistence (Req 8.3–8.4)
-    - On startup, initialise the `feature-extraction` pipeline for `Xenova/all-MiniLM-L6-v2`; emit `MODEL_LOAD_PROGRESS` messages during loading, then `{ progress: 100, status: 'ready' }`
+    - Implement `computeDeterministicEmbedding`: a deterministic, hash-based 384-d lexical feature extractor (word hashes, 4-char stems, character trigrams, tanh, L2 normalisation) with no model download and no network requests (Req 8.3–8.4)
+    - On first use, emit `MODEL_LOAD_PROGRESS { progress: 100, status: 'ready' }` and `MODEL_READY` (nothing to download)
     - Handle `CHUNK_DOCUMENT`: invoke `lib/chunker.ts`-compatible chunking logic (or import chunker if bundler supports cross-worker imports), emit `CHUNK_COMPLETE`
-    - Handle `EMBED_CHUNK`: run pipeline inference, transfer `Float32Array` via Transferable, emit `EMBED_COMPLETE { chunkId, vector }`
-    - Handle `EMBED_QUERY`: run pipeline inference, emit `EMBED_COMPLETE { requestId, vector }`; emit `EMBED_ERROR` on failure
-    - _Requirements: 1.5–1.6 (chunking, embedding), 8.3–8.4 (offline model), 9.4 (worker isolation)_
+    - Handle `EMBED_CHUNK`: run the lexical feature extractor, transfer `Float32Array` via Transferable, emit `EMBED_COMPLETE { chunkId, vector }`
+    - Handle `EMBED_QUERY`: run the lexical feature extractor, emit `EMBED_COMPLETE { requestId, vector }`; emit `EMBED_ERROR` on failure
+    - _Requirements: 1.5–1.6 (chunking, embedding), 8.3–8.4 (offline extractor), 9.4 (worker isolation)_
 
 - [x] 8. Agent implementations
   - [x] 8.1 Create `lib/agents/archivist.ts`
@@ -371,7 +371,7 @@ Tasks are ordered by dependency: project scaffolding → data layer → worker i
 ## Notes
 
 - Tasks marked with `*` are optional and can be skipped for a faster MVP iteration; however, no tasks are marked optional in this spec because all requirements are considered MVP scope per the product steering document.
-- The design document specifies Transformers.js v2 (`@xenova/transformers`) as the embedding package — use this unless the user explicitly requests v3 (`@huggingface/transformers`).
+- Embeddings use the offline lexical feature extractor (`ghostdocs-lexical-hash-384-v1`); no neural model package is a dependency. An opt-in neural model is a possible future roadmap item.
 - The embeddings worker handles both chunking and embedding to avoid cross-worker import complexities; this matches the design's sequence diagram where `CHUNK_DOCUMENT` is sent to the embeddings worker.
 - All `data-testid` values must exactly match the canonical contract table in `requirements.md` — any divergence will break E2E selectors.
 - Dexie `bulkAdd` throws on duplicate keys by default; use `bulkPut` in "add" mode (or wrap in try/catch) for capsule import to achieve silent-skip behaviour per Req 2.3.

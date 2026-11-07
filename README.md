@@ -2,7 +2,7 @@
 
 > **100% Browser-Local Multi-Agent Knowledge Resurrection Engine · Built with Kiro Spec-Driven Development**
 
-GhostDocs is a privacy-first, browser-only application that resurrects institutional memory from forgotten PDF, Markdown, and Plain-Text documents. Powered by Web Workers, IndexedDB (Dexie.js), PDF.js, and local `Transformers.js` vector embeddings (`Xenova/all-MiniLM-L6-v2`), GhostDocs coordinates a three-agent AI Crew (**The Archivist**, **The Historian**, and **The Researcher**) to surface source-cited answers, chronological timelines, and portable **Time Capsules**—without a single byte of document content ever leaving your browser tab.
+GhostDocs is a privacy-first, browser-only application that resurrects institutional memory from forgotten PDF, Markdown, and Plain-Text documents. Powered by Web Workers, IndexedDB (Dexie.js), PDF.js, and local 384-dimensional lexical vector embeddings (`ghostdocs-lexical-hash-384-v1`), GhostDocs coordinates a three-agent AI Crew (**The Archivist**, **The Historian**, and **The Researcher**) to surface source-cited answers, chronological timelines, and portable **Time Capsules**—without a single byte of document content ever leaving your browser tab.
 
 ---
 
@@ -13,7 +13,7 @@ When projects end, teams reorganize, or engineers depart, critical organizationa
 ## 💡 The Solution: GhostDocs
 
 GhostDocs turns your browser into a local-first knowledge vault styled with a spooky-professional **Kiroween** dark-mode aesthetic:
-- **Zero Network Leakage:** Enforced via Content Security Policy (`connect-src`), Web Worker isolation, Next.js static export (`output: 'export'`), and Playwright canary-token interception tests (`R-PBT-7`).
+- **Zero Network Leakage:** Enforced via Content Security Policy (`connect-src 'self'`, same-origin only), Web Worker isolation, Next.js static export (`output: 'export'`), and Playwright canary-token interception tests (`R-PBT-7`).
 - **Source-First & Zero Hallucination:** Every answer and timeline card is synthesized strictly from retrieved document chunks and carries a verbatim citation badge (`<= 50` words) verified by property-based round-trip tests (`R-PBT-1`).
 - **Explicit Uncertainty Scoring:** Low-confidence answers (`< 0.60`), fiscal/calendar date ambiguities (`Q3 FY2024`), and implicit temporal signals (`"in the previous quarter"`) automatically surface plain-language `UncertaintyNotice` callouts.
 
@@ -25,6 +25,8 @@ GhostDocs turns your browser into a local-first knowledge vault styled with a sp
    - Drag-and-drop upload for `.pdf`, `.md`, `.markdown`, and `.txt` files.
    - Page-by-page PDF extraction (`pdfjs-dist`), password-protected PDF detection, corrupt-page skipping warnings, and duplicate document replacement prompts.
    - 512-token window chunking with 50-token overlap and 384-dimensional local vector embeddings.
+   - Embeddings are computed 100% in the browser by `ghostdocs-lexical-hash-384-v1`, a deterministic 384-dimensional lexical feature extractor (word hashes, 4-character stems, character trigrams, tanh, L2 normalisation) running in a Web Worker. There is no model download and there are no network requests, so results are identical online and offline.
+   - Trade-off: matching is lexical (shared words, stems, and trigrams) and does not recognise synonyms. An opt-in neural model is on the roadmap.
 2. **The 3 AI Crew Agents (`lib/agents/`)**
    - 🗄️ **The Archivist (`lib/agents/archivist.ts`):** Extracts structural metadata (title, ISO/written dates, author, document type) and generates 1–200 word extractive summaries.
    - 📜 **The Historian (`lib/agents/historian.ts`):** Detects explicit ISO 8601 dates, written dates, fiscal year references, and implicit temporal signals; assigns confidence scores (`>= 0.80` explicit, `< 0.80` implicit); and builds a chronological timeline.
@@ -44,7 +46,7 @@ graph TD
         UI["GhostDocsApp Client Island\n(Next.js Static Export)"]
         DB[("IndexedDB via Dexie.js\ndocuments · chunks · embeddings\ntimelines · answers · capsules")]
         PW["parser.worker.ts\n(PDF.js + Markdown/TXT)"]
-        EW["embeddings.worker.ts\n(Transformers.js 384-d Vectors)"]
+        EW["embeddings.worker.ts\n(Lexical Hash 384-d Vectors)"]
         Search["lib/search.ts\n(requestIdleCallback Cosine Ranking)"]
         subgraph Crew["AI Crew Orchestrators"]
             Archivist["🗄️ Archivist Agent"]

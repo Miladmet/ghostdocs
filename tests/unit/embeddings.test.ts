@@ -61,7 +61,37 @@ describe('lib/embeddings.ts', () => {
   });
 
   it('exports the default embedding model constant', () => {
-    expect(DEFAULT_EMBEDDING_MODEL).toBe('Xenova/all-MiniLM-L6-v2');
+    expect(DEFAULT_EMBEDDING_MODEL).toBe('ghostdocs-lexical-hash-384-v1');
+  });
+
+  describe('computeDeterministicEmbedding (offline lexical extractor)', () => {
+    const samples = [
+      'The board approved the Q3 budget on 14 September 2024.',
+      'merger',
+      'Following the merger, headcount grew by 12%.',
+    ];
+
+    async function load() {
+      // The worker module registers a message listener on `self` at import time.
+      vi.stubGlobal('self', { addEventListener: () => {}, postMessage: () => {} });
+      const mod = await import('@/workers/embeddings.worker');
+      vi.unstubAllGlobals();
+      return mod;
+    }
+
+    it('is deterministic, 384-dimensional and L2-normalised', async () => {
+      const { computeDeterministicEmbedding, EMBEDDING_MODEL_ID } = await load();
+      expect(EMBEDDING_MODEL_ID).toBe(DEFAULT_EMBEDDING_MODEL);
+      for (const text of samples) {
+        const a = computeDeterministicEmbedding(text);
+        const b = computeDeterministicEmbedding(text);
+        expect(a).toHaveLength(384);
+        expect(Array.from(a)).toEqual(Array.from(b));
+        let sumSq = 0;
+        for (const v of a) sumSq += v * v;
+        expect(Math.abs(Math.sqrt(sumSq) - 1)).toBeLessThan(1e-5);
+      }
+    });
   });
 
   it('instantiates EmbeddingsService and tracks progress', () => {

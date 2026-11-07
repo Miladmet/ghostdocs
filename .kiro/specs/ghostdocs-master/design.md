@@ -7,7 +7,7 @@ GhostDocs is a fully browser-local application that ingests PDF, Markdown, and p
 The design is built on five architectural pillars:
 
 1. **Static Next.js 15 export** (`output: 'export'`) — no server-side rendering of document content; the application is a pure client-side SPA deployed to any static host.
-2. **Web Workers for all heavy processing** — PDF parsing, chunking, and Transformers.js embedding inference run in dedicated workers so the main thread is never blocked for more than 50 ms.
+2. **Web Workers for all heavy processing** — PDF parsing, chunking, and offline lexical embedding generation (deterministic, no model download) run in dedicated workers so the main thread is never blocked for more than 50 ms.
 3. **IndexedDB via Dexie.js** — the single source of truth for all persistent state (documents, chunks, embeddings, timelines, answers, capsules), accessed only from the main thread or worker threads, never from API routes.
 4. **Kiroween dark-mode-only theme** — a spooky-professional palette defined entirely as Tailwind `theme.extend` tokens, with WCAG AA contrast compliance and ≤ 200 ms entry transitions.
 5. **Zero network leakage** — a Content Security Policy that blocks all non-model-weight network requests, Web Worker isolation, and no API routes that touch user document data.
@@ -40,12 +40,8 @@ graph TD
         end
         subgraph Workers["Web Workers"]
             PW["parser.worker.ts\n(PDF.js + text)"]
-            EW["embeddings.worker.ts\n(Transformers.js)"]
+            EW["embeddings.worker.ts\n(offline lexical feature extractor)"]
         end
-        Cache["Browser Cache\n(model weights)"]
-    end
-    subgraph Network["Network (model weights only)"]
-        HF["HuggingFace CDN\n(Xenova/all-MiniLM-L6-v2)"]
     end
 
     UI -->|postMessage| PW
@@ -56,8 +52,6 @@ graph TD
     DB --> Search
     Search --> Agents
     Agents --> UI
-    EW <-->|model weights| Cache
-    Cache <-->|cold load only| HF
 ```
 
 ### Next.js App Router Structure
@@ -289,7 +283,7 @@ export interface ChunkRecord {
 
 export interface EmbeddingRecord {
   chunkId: string;                   // Primary key — matches ChunkRecord.chunkId
-  vector: Float32Array;              // 384-dimensional (all-MiniLM-L6-v2 output)
+  vector: Float32Array;              // 384-dimensional lexical feature vector (ghostdocs-lexical-hash-384-v1), L2-normalised
 }
 
 // ─── Timeline Entry ────────────────────────────────────────────────────────
@@ -417,7 +411,7 @@ sequenceDiagram
 
     loop Per chunk (streamed)
         UI->>EW: postMessage({ type: 'EMBED_CHUNK', chunkId, text })
-        EW->>EW: Transformers.js pipeline inference
+        EW->>EW: Offline lexical feature extraction (384-d, deterministic)
         EW-->>UI: postMessage({ type: 'EMBED_COMPLETE', chunkId, vector: Float32Array })
         UI->>DB: Insert EmbeddingRecord {chunkId, vector}
         UI->>DB: Update ChunkRecord {embeddingStatus: 'complete'}
@@ -803,8 +797,8 @@ The privacy-first guarantee (Req 8.1–8.5, R-PBT-7) is enforced at three indepe
 ```
 Content-Security-Policy:
   default-src 'self';
-  script-src 'self' 'wasm-unsafe-eval';
-  connect-src 'self' https://huggingface.co https://cdn-lfs.huggingface.co;
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval';
+  connect-src 'self';
   worker-src 'self' blob:;
   img-src 'self' data: blob:;
   style-src 'self' 'unsafe-inline';
@@ -814,9 +808,7 @@ Content-Security-Policy:
   frame-ancestors 'none';
 ```
 
-`connect-src` permits only HuggingFace CDN (model weights) and `'self'`. Document text, chunks, and embeddings are never sent there — the HuggingFace CDN is only contacted to fetch model binary files, not to send data.
-
-`wasm-unsafe-eval` is required for Transformers.js WASM inference. This is a known and accepted tradeoff — it does not permit arbitrary code execution beyond WASM modules already loaded from `'self'`.
+`connect-src` is `'self'` only, because the app makes no cross-origin requests: the offline lexical feature extractor downloads no model. `wasm-unsafe-eval` is retained because PDF.js can load WASM image decoders (JPX/OpenJPEG, JBIG2, QCMS). Document text, chunks, and embeddings are never sent to any origin.
 
 #### Layer 2: Web Worker Isolation
 
@@ -824,7 +816,7 @@ Workers are instantiated with `new Worker(new URL('../workers/...', import.meta.
 - They have no `document` or `window` globals.
 - Their `fetch` capability is restricted by the same CSP `connect-src` directive.
 
-The embeddings worker only contacts HuggingFace CDN for model weight files during the initial cold load. Thereafter it operates fully offline (Req 8.4).
+The embeddings worker makes no network requests at all: the offline lexical feature extractor needs no model files, so it operates identically online and offline (Req 8.3, 8.4).
 
 #### Layer 3: No API Routes for Document Data
 
@@ -1069,15 +1061,31 @@ Rather than sending all chunks to the worker at once, chunks are submitted for e
 **Strategy 3 — Dexie bulk operations**  
 All IndexedDB writes use `db.chunks.bulkAdd()` and `db.embeddings.bulkAdd()` rather than individual `add()` calls. Bulk operations execute in a single IndexedDB transaction, dramatically reducing the number of main-thread event loop ticks consumed.
 
-### Model Weight Caching
+### Offline Feature Extractor
 
-The Transformers.js library caches model weights automatically in the [Cache API](https://developer.mozilla.org/en-US/docs/Web/API/Cache) (via `env.cacheDir`). On cold load:
+Embeddings are produced by `computeDeterministicEmbedding` in `workers/embeddings.worker.ts` (identifier `ghostdocs-lexical-hash-384-v1`). There is no model, no download and no cache to warm.
 
-1. The embeddings worker requests weights from HuggingFace CDN (~23 MB for `all-MiniLM-L6-v2`).
-2. The browser caches the response.
-3. Subsequent loads serve from cache with zero network latency.
+**Algorithm**
 
-The worker emits `MODEL_LOAD_PROGRESS` messages during the cold load, which the UI displays as a model initialisation progress bar. After the model is ready, the worker emits `{ type: 'MODEL_LOAD_PROGRESS', progress: 100, status: 'ready' }` and the progress bar is dismissed.
+1. Lower-case the text, strip non-alphanumeric characters, split on whitespace, and drop common stopwords (falling back to all tokens if only stopwords remain).
+2. For each unique remaining token, add weighted contributions to a 384-slot vector: 8 FNV-1a word-hash projections (numeric tokens weighted higher), 4 projections of the 4-character stem, and one projection per character trigram.
+3. Apply `tanh` to every slot to damp dominant features, then L2-normalise so cosine similarity reduces to a dot product.
+
+**Trade-off**
+
+The vectors encode lexical overlap only: shared words, shared 4-character stems and shared character trigrams. This is not a neural or semantic model. It does not understand synonyms or paraphrase, so a query must share vocabulary (or word fragments) with the passage it should find. Search is therefore "lexical similarity search", and the UI and docs must not describe it as true semantic understanding.
+
+**Determinism**
+
+The function is pure: the same input text always produces a bit-identical `Float32Array` of length 384, on every device and whether online or offline. This makes ingestion and search results reproducible and testable.
+
+**Zero network use**
+
+The extractor runs entirely in the worker with no `fetch`, no WASM and no model files. Embedding generation is fast enough that the worker reports `MODEL_LOAD_PROGRESS { progress: 100, status: 'ready' }` and `MODEL_READY` on first use; there is no initialisation progress to show.
+
+**Future option**
+
+An opt-in neural model (e.g. all-MiniLM-L6-v2 via Transformers.js) could be added for true semantic search, downloaded only with explicit user consent (see Future Roadmap in requirements).
 
 ### Large PDF Ingestion — Chunked Streaming
 

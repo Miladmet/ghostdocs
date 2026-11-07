@@ -1,10 +1,16 @@
 // lib/embeddings.ts
 // Main-thread wrapper for the embeddings Web Worker.
 //
-// Default embedding model: Xenova/all-MiniLM-L6-v2
-//   - 384-dimensional output vectors
-//   - Small (≈23MB weights), fast, good quality for semantic search
-//   - Weights cached by the browser automatically via Transformers.js
+// Embedding implementation: offline deterministic lexical feature extractor
+// (see computeDeterministicEmbedding in workers/embeddings.worker.ts).
+//   - 384-dimensional, L2-normalised output vectors
+//   - Hash-based features from words, 4-char stems and character trigrams
+//   - No model download, no network requests, identical results online/offline
+//   - NOT a neural/semantic model: it matches shared lexical features and
+//     does not understand synonyms
+//
+// The onModelLoadProgress API is retained for protocol compatibility; the
+// worker reports 'ready' immediately because there is nothing to download.
 //
 // Usage pattern:
 //   const service = new EmbeddingsService();
@@ -19,8 +25,8 @@ import type {
   EmbedErrorMessage,
 } from '@/workers/types';
 
-/** The default embedding model — documented here for discoverability. */
-export const DEFAULT_EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
+/** Identifier of the offline lexical feature extractor; matches EMBEDDING_MODEL_ID in the worker. */
+export const DEFAULT_EMBEDDING_MODEL = 'ghostdocs-lexical-hash-384-v1';
 
 /** Timeout for a single embed query (Req 4.10: 10 seconds). */
 const EMBED_TIMEOUT_MS = 10_000;

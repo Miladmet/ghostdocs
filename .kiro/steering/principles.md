@@ -62,7 +62,7 @@ All document content, embeddings, search indices, and chat history must remain e
 
 - No document text, chunks, or embeddings may be sent to any external API (including LLM APIs, analytics endpoints, or telemetry services).
 - No network requests may be made with user document data as payload.
-- Model inference uses Transformers.js running locally in a Web Worker.
+- Embeddings are produced by a deterministic, offline lexical feature extractor running locally in a Web Worker, with no model download and no network requests.
 - If a future feature requires a network call (e.g., an optional cloud LLM), it must be explicitly opt-in, clearly labelled, and must never transmit raw document content without user consent.
 
 **Enforcement**: Code review must flag any `fetch`, `XMLHttpRequest`, or WebSocket call that could carry document data.

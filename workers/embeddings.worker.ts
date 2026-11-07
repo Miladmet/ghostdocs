@@ -1,7 +1,11 @@
 // workers/embeddings.worker.ts
 // Web Worker handling document chunking (CHUNK_DOCUMENT) and
-// local 384-dimensional embedding generation (EMBED_CHUNK, EMBED_QUERY)
-// compatible with Xenova/all-MiniLM-L6-v2 (384-dim L2-normalised vectors).
+// local 384-dimensional embedding generation (EMBED_CHUNK, EMBED_QUERY).
+//
+// Embeddings come from a deterministic, hash-based LEXICAL feature extractor.
+// It runs fully offline with no network requests and no model download.
+// It is NOT a neural or semantic model: it matches on shared words, 4-char
+// stems and character trigrams, and does not understand synonyms.
 
 import { chunkDocument } from '../lib/chunker';
 import type {
@@ -13,7 +17,7 @@ import type {
   ModelReadyMessage,
 } from './types';
 
-export const MODEL_NAME = 'Xenova/all-MiniLM-L6-v2';
+export const EMBEDDING_MODEL_ID = 'ghostdocs-lexical-hash-384-v1';
 const EMBEDDING_DIM = 384;
 
 const STOPWORDS = new Set([
@@ -74,9 +78,13 @@ function fnv1a(str: string, seed: number = 2166136261): number {
 }
 
 /**
- * Deterministic 384-dimensional semantic feature-extraction pipeline.
- * Produces L2-normalised Float32Array vectors (matching Xenova/all-MiniLM-L6-v2 384-dim layout)
- * so semantic search works 100% locally in <50ms without requiring external CDN downloads.
+ * Deterministic 384-dimensional lexical feature extractor.
+ *
+ * Hashes each unique content word, its 4-char stem and its character trigrams
+ * into a 384-slot vector, squashes with tanh, then L2-normalises. The same
+ * input always yields the identical vector. Similarity reflects shared
+ * words, stems and trigrams only; it is not neural and does not match
+ * synonyms. Runs offline with zero network requests.
  */
 export function computeDeterministicEmbedding(text: string): Float32Array {
   const vec = new Float32Array(EMBEDDING_DIM);
@@ -128,7 +136,7 @@ export function computeDeterministicEmbedding(text: string): Float32Array {
     }
   }
 
-  // Saturate dimensions via tanh (simulating transformer layer pooling)
+  // Saturate dimensions via tanh to damp dominant slots, then L2-normalise
   let mag = 0;
   for (let i = 0; i < EMBEDDING_DIM; i++) {
     vec[i] = Math.tanh(vec[i]);
@@ -159,9 +167,6 @@ function ensureModelReady(): void {
 }
 
 async function generateVector(text: string): Promise<Float32Array> {
-  if (text.includes('__FORCE_EMBED_ERROR__')) {
-    throw new Error('Forced embedding failure for chunk');
-  }
   ensureModelReady();
   return computeDeterministicEmbedding(text);
 }

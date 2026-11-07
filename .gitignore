@@ -12,6 +12,16 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+
+# media & temp
+*.webm
+*.mp4
+*.png
+/voiceover_clean_temp/
+__pycache__/
+scripts/test*
 
 # next.js
 /.next/

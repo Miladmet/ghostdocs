@@ -8,7 +8,7 @@
 **GhostDocs** is a 100% browser-local knowledge resurrection platform that brings forgotten organizational documents back to life. Users drop PDF, Markdown, and plain-text files into a dark-mode **Kiroween Time Capsule**, where a three-agent AI Crew collaborates entirely inside the browser tab:
 - **🗄️ The Archivist** catalogs structural metadata (titles, dates, authors, document types), flags duplicate uploads, and writes 1–200 word extractive summaries.
 - **📜 The Historian** scans every chunk for explicit ISO/written dates, fiscal year references (`Q3 FY2024`), and implicit temporal cues (`"in the previous quarter"`), reconstructing an interactive chronological timeline with confidence scores and date-ambiguity notices.
-- **🔍 The Researcher** performs sub-500ms semantic vector search (`Xenova/all-MiniLM-L6-v2` in a Web Worker) and synthesizes source-cited answers with verbatim passage badges (`<= 50` words) and explicit uncertainty notices whenever confidence falls below `0.60`.
+- **🔍 The Researcher** performs sub-500ms lexical vector search (cosine similarity over deterministic 384-dimensional hash-based embeddings computed offline in a Web Worker; it matches shared words, stems and trigrams, not synonyms or meaning) and synthesizes source-cited answers with verbatim passage badges (`<= 50` words) and explicit uncertainty notices whenever confidence falls below `0.60`.
 
 Users can seal their entire session—documents, chunks, 384-dimensional embeddings, summaries, and timelines—into a portable `ghostdocs-capsule-YYYY-MM-DD.json` file that can be shared and restored offline.
 
@@ -17,7 +17,7 @@ Whenever projects sunset or teams reorganize, critical institutional context get
 
 ### How We Built It
 - **Frontend & Static Architecture:** Next.js (`output: 'export'`), React 19, TypeScript (`strict: true`), Tailwind CSS v4, and `shadcn/ui` styled with custom Kiroween tokens (`ghost-void`, `ghost-crypt`, `specter-*`, `ectoplasm-*`, `glow-*`, `parchment-*`).
-- **Web Worker Pipeline:** `workers/parser.worker.ts` runs `pdfjs-dist` page-by-page without blocking the UI thread (`<= 50ms`), while `workers/embeddings.worker.ts` runs 512-token overlapping chunking and `Transformers.js` embedding inference using zero-copy `Transferable` `ArrayBuffer` and `Float32Array` messages.
+- **Web Worker Pipeline:** `workers/parser.worker.ts` runs `pdfjs-dist` page-by-page without blocking the UI thread (`<= 50ms`), while `workers/embeddings.worker.ts` runs 512-token overlapping chunking and a deterministic offline lexical feature extractor (no model download, no network) for embeddings, using zero-copy `Transferable` `ArrayBuffer` and `Float32Array` messages.
 - **IndexedDB Persistence:** `lib/db.ts` defines a typed 6-table `Dexie.js` database (`documents`, `chunks`, `embeddings`, `timelines`, `answers`, `capsules`) with compound secondary indexes (`[documentId+chunkIndex]`).
 - **Property-Based & E2E Verification:** 6 Vitest + `fast-check` test suites (100 runs per property) and 8 Playwright E2E + `@axe-core/playwright` accessibility test suites.
 
@@ -44,6 +44,7 @@ We used Kiro's full **Spec-Driven Development** workflow from Phase 0:
 - Property-based testing (`fast-check`) pairs naturally with EARS requirements to catch subtle edge cases in text chunkers, date parsers, and vector math.
 
 ### What's Next for GhostDocs
+- Optional opt-in neural embedding model (e.g. all-MiniLM-L6-v2 via Transformers.js) for true semantic search, downloaded only with explicit user consent. Today's search is lexical and does not match synonyms.
 - Optional WebGPU local LLM synthesis (`WebLLM`) alongside extractive synthesis.
 - Peer-to-peer encrypted Time Capsule sharing over WebRTC.
 - Additional local parsers for `.docx`, `.pptx`, and `.epub` archives.
@@ -61,9 +62,9 @@ We used Kiro's full **Spec-Driven Development** workflow from Phase 0:
 - **Narration:** *"We built GhostDocs using Kiro’s Spec-Driven workflow from Phase 0. First, we established four Steering files enforcing our non-negotiable hierarchy: 100% browser-local privacy, zero hallucination, mandatory verbatim citations, and explicit uncertainty scoring. From there, Kiro generated 82 EARS acceptance criteria, 9 `fast-check` property-based test invariants, a 1,158-line technical design, and 54 implementation tasks across 13 dependency waves."*
 
 ### `[1:05 – 1:45]` Live Demo: Uploading Forgotten Documents & The Archivist + Historian (Innovation)
-- **Visual:** Drag and drop `sample.pdf`, `sample.md`, and `sample.txt` into the `UploadZone`. Show the real-time `parsing → chunking → embedding` progress bar powered by Web Workers (`pdfjs-dist` + `Transformers.js`).
+- **Visual:** Drag and drop `sample.pdf`, `sample.md`, and `sample.txt` into the `UploadZone`. Show the real-time `parsing → chunking → embedding` progress bar powered by Web Workers (`pdfjs-dist` + the offline lexical feature extractor).
 - **Visual:** Pan to **The Archivist** panel (`agent-archivist`) displaying extracted titles, authors (`Clara Vance`, `Evelyn Cross`), dates, and extractive summaries. Then pan to **The Historian** panel (`agent-historian`) showing the reconstructed chronological timeline (`2021-09-01` → `2022-03-14` → `2023-06-15` → `2024-07-01` → `2024-09-14`). Hover over the amber **Uncertainty Notice** on `Q3 FY2024` and `"in the previous quarter"`.
-- **Narration:** *"When we drop forgotten PDF, Markdown, and text files into the Time Capsule, Web Workers extract text and generate 384-dimensional embeddings locally in under 5 seconds without blocking the UI. Immediately, **The Archivist** catalogs metadata and summaries, while **The Historian** reconstructs a chronological timeline—automatically flagging fiscal-versus-calendar date ambiguities and implicit temporal signals with confidence scores."*
+- **Narration:** *"When we drop forgotten PDF, Markdown, and text files into the Time Capsule, Web Workers extract text and generate 384-dimensional lexical feature vectors locally, with no model download, in under 5 seconds without blocking the UI. Immediately, **The Archivist** catalogs metadata and summaries, while **The Historian** reconstructs a chronological timeline—automatically flagging fiscal-versus-calendar date ambiguities and implicit temporal signals with confidence scores."*
 
 ### `[1:45 – 2:30]` Live Demo: The Researcher, Citations & Zero Network Leakage (Innovation & Impact)
 - **Visual:** Open Chrome DevTools Network tab (or show offline mode). Type *"What was the Q3 budget allocation and when was the security constitution ratified?"* into the search bar and click **Resurrect**.

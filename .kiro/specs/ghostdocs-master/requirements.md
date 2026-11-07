@@ -25,6 +25,7 @@ This document covers the Master Acceptance & Product Specification for the Ghost
 ### Future Roadmap (Out of MVP Scope)
 
 - Optional opt-in cloud LLM integration (never transmits raw document content without explicit user consent).
+- Optional opt-in neural embedding model (e.g. all-MiniLM-L6-v2 via Transformers.js) for true semantic search, downloaded only with explicit user consent.
 - Multi-user collaboration via peer-to-peer WebRTC.
 - Plugin system for additional document formats (DOCX, PPTX, EPUB).
 - Saved search history and cross-session query memory.
@@ -38,14 +39,14 @@ This document covers the Master Acceptance & Product Specification for the Ghost
 - **Time_Capsule**: A persistent, exportable snapshot containing documents, extracted entities, summaries, and timeline data, stored in IndexedDB.
 - **Document**: A single uploaded file (PDF, Markdown, or plain text) stored in IndexedDB with its raw text, metadata, and processing status.
 - **Chunk**: A text segment of fixed maximum length derived from a Document, stored with its source Document reference, page/line offset, and a unique `chunkId`.
-- **Embedding**: A fixed-length numeric vector representation of a Chunk, produced by the Embedding_Worker using `Xenova/all-MiniLM-L6-v2`.
+- **Embedding**: A fixed-length numeric vector representation of a Chunk, produced by the Embedding_Worker using a deterministic, hash-based 384-dimensional lexical feature extractor (`ghostdocs-lexical-hash-384-v1`) built from word hashes, 4-character stems and character trigrams. It captures lexical overlap only; it is not a neural model and does not match synonyms.
 - **Chunk_Store**: The IndexedDB table holding all Chunks and their associated Embeddings.
 - **Archivist**: The AI Crew agent responsible for document organisation, metadata extraction, and deduplication detection.
 - **Historian**: The AI Crew agent responsible for chronological narrative construction, timeline generation, and temporal reasoning.
 - **Researcher**: The AI Crew agent responsible for semantic search, cross-document synthesis, and cited answer generation.
-- **Embedding_Worker**: The Web Worker running Transformers.js inference to produce Embeddings without blocking the main thread.
+- **Embedding_Worker**: The Web Worker running the offline lexical feature extractor to produce Embeddings without blocking the main thread.
 - **Parser_Worker**: The Web Worker running PDF.js and text parsers to extract raw text from uploaded files without blocking the main thread.
-- **Semantic_Search**: Cosine-similarity ranking of Chunks against a query Embedding to retrieve the most relevant passages.
+- **Semantic_Search**: Cosine-similarity ranking (over lexical-feature Embeddings, so matching is driven by shared words, stems and trigrams rather than meaning) of Chunks against a query Embedding to retrieve the most relevant passages.
 - **Citation**: A structured reference comprising document name, page number (PDFs) or line/section (Markdown/TXT), and a verbatim excerpt of ≤ 50 words.
 - **Confidence_Score**: A numeric value in the range [0.0, 1.0] expressing an agent's certainty about a Timeline_Entry or Answer, derived from source coverage and signal clarity.
 - **Timeline_Entry**: A structured event record containing an event description, resolved date or date range, Confidence_Score, and one or more Citations.
@@ -192,8 +193,8 @@ This document covers the Master Acceptance & Product Specification for the Ghost
 
 1. THE GhostDocs SHALL perform all document parsing, chunking, embedding, search, and inference exclusively within the browser process using Web Workers and IndexedDB — no server-side processing.
 2. THE GhostDocs SHALL not issue any `fetch`, `XMLHttpRequest`, or WebSocket request that carries document text, Chunks, or Embeddings as payload.
-3. THE Embedding_Worker SHALL load the `Xenova/all-MiniLM-L6-v2` model from the browser cache or the HuggingFace CDN (model weights only, no document data) and subsequently operate offline.
-4. IF the browser is offline after the model weights are cached, THEN THE GhostDocs SHALL continue to function for all operations defined in criteria 1 through 3 with results indistinguishable from online operation.
+3. THE Embedding_Worker SHALL generate Embeddings using a deterministic, in-worker 384-dimensional lexical feature extractor that requires no model download and makes no network requests.
+4. IF the browser is offline, THEN THE GhostDocs SHALL perform all ingestion, search, and inference operations with results identical to online operation.
 5. THE GhostDocs SHALL not include document text, Chunk content, or Embedding vectors in any network request body, query string, or header during any session in which documents are present (zero network leakage invariant).
 
 ---
@@ -204,7 +205,7 @@ This document covers the Master Acceptance & Product Specification for the Ghost
 
 #### Acceptance Criteria
 
-1. THE GhostDocs SHALL achieve a First Contentful Paint of ≤ 3 seconds on a device with at least a 4-core CPU running at 2.0 GHz or faster, 8 GB RAM, a 50 Mbps network connection, and a modern Chromium-based browser on a cold load with no cached model weights.
+1. THE GhostDocs SHALL achieve a First Contentful Paint of ≤ 3 seconds on a device with at least a 4-core CPU running at 2.0 GHz or faster, 8 GB RAM, a 50 Mbps network connection, and a modern Chromium-based browser on a cold load with an empty browser cache (no model download is required).
 2. THE GhostDocs SHALL complete ingestion of a 10-page PDF of ≤ 5 MB — including text extraction, chunking, and embedding — within 5 seconds on the hardware baseline defined in criterion 1.
 3. THE GhostDocs SHALL return Semantic_Search results within 500 ms measured from the submit event to the first result rendered in the UI, for a Chunk_Store containing up to 1,000 Chunks, on the hardware baseline defined in criterion 1.
 4. THE GhostDocs SHALL not block the main thread for more than 50 ms at any point during ingestion, embedding, or search operations.

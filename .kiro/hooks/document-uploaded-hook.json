@@ -1,7 +1,7 @@
 {
   "name": "Document Uploaded — Ingestion & Index Verification Hook",
   "version": "1.0.0",
-  "description": "Verifies that the document ingestion pipeline (text extraction, metadata generation, 512-token chunking with 50-token overlap, local Transformers.js embedding, and IndexedDB search index update) maintains R-PBT-5 and R-PBT-6 invariants when ingestion modules change.",
+  "description": "Verifies that the document ingestion pipeline (text extraction, metadata generation, 512-token chunking with 50-token overlap, offline deterministic lexical embedding, and IndexedDB search index update) maintains R-PBT-5 and R-PBT-6 invariants when ingestion modules change.",
   "trigger": {
     "type": "onFileSave",
     "patterns": [
@@ -15,7 +15,7 @@
   "actions": [
     {
       "type": "agentPrompt",
-      "prompt": "Verify that the document upload pipeline preserves: (1) non-blocking Web Worker text extraction via PDF.js and Markdown/TXT splitters, (2) Archivist metadata extraction, (3) 512-token chunking with 50-token overlap, (4) local 384-d Float32Array embeddings via Xenova/all-MiniLM-L6-v2, and (5) IndexedDB Chunk_Store index updates. Run `npx vitest run tests/unit/chunker.test.ts` to confirm R-PBT-5 and R-PBT-6 pass."
+      "prompt": "Verify that the document upload pipeline preserves: (1) non-blocking Web Worker text extraction via PDF.js and Markdown/TXT splitters, (2) Archivist metadata extraction, (3) 512-token chunking with 50-token overlap, (4) deterministic, offline 384-d Float32Array lexical embeddings from computeDeterministicEmbedding (no model download, no network requests; not a neural model), and (5) IndexedDB Chunk_Store index updates. Run `npx vitest run tests/unit/chunker.test.ts` to confirm R-PBT-5 and R-PBT-6 pass."
     }
   ]
 }
