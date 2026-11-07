@@ -56,7 +56,7 @@ Enforce this at every layer:
 - Always run embedding generation in the dedicated Web Worker, never in a React component or on the main thread.
 - Communicate with the worker via `postMessage` / `onmessage`; use a typed message protocol defined in `workers/types.ts`.
 - Identifier: `ghostdocs-lexical-hash-384-v1` (`EMBEDDING_MODEL_ID` in the worker, `DEFAULT_EMBEDDING_MODEL` in `lib/embeddings.ts`). Bump it if the algorithm changes so stored vectors can be identified.
-- A neural model (e.g. all-MiniLM-L6-v2 via Transformers.js) is a possible opt-in future feature, only with explicit user consent for the download. `@xenova/transformers` remains in `package.json` but is currently unused.
+- A neural model (e.g. all-MiniLM-L6-v2 via Transformers.js) is a possible opt-in future feature, only with explicit user consent for the download.
 
 ---
 

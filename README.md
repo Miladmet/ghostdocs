@@ -94,7 +94,7 @@ GhostDocs was engineered end-to-end using Kiro's full customization and spec-dri
 
 ```bash
 # 1. Install dependencies (exact pinned versions)
-npm install --ignore-scripts
+npm install
 
 # 2. Run development server
 npm run dev
