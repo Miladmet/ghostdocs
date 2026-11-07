@@ -5,6 +5,7 @@ import { Upload, AlertTriangle, FileWarning } from "lucide-react";
 import { deriveSlug } from "@/lib/slug";
 import { checkDuplicate } from "@/lib/agents/archivist";
 import { Button } from "@/components/ui/button";
+import { createSampleVaultFiles } from "@/lib/sample-vault";
 
 export interface UploadZoneProps {
   onFilesAccepted: (files: File[], replaceExisting?: boolean) => void;
@@ -187,6 +188,15 @@ export function UploadZone({
           </p>
         </div>
       </div>
+
+      <button
+        type="button"
+        data-testid="load-sample-vault-button"
+        onClick={() => void handleFiles(createSampleVaultFiles())}
+        className="w-full rounded-md bg-specter-600 px-4 py-2.5 text-sm font-semibold text-parchment-100 shadow-glow-sm transition-all duration-150 hover:bg-specter-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-glow-400"
+      >
+        <span aria-hidden="true">🔮</span> Load Sample Vault (Instant Demo)
+      </button>
 
       {allErrors.length > 0 && (
         <div

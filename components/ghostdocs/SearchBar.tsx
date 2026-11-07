@@ -4,6 +4,14 @@ import React, { useState } from "react";
 import { Search, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+export const QUERY_SUGGESTIONS = [
+  { id: "q3-budget", text: "What was the Q3 budget allocation?" },
+  {
+    id: "security-constitution",
+    text: "When was the security constitution ratified?",
+  },
+] as const;
+
 export interface SearchBarProps {
   onSearch: (query: string) => Promise<void> | void;
   isSearching?: boolean;
@@ -18,9 +26,8 @@ export function SearchBar({
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = query.trim();
+  const submitQuery = async (text: string) => {
+    const trimmed = text.trim();
 
     if (trimmed.length === 0) {
       setError("Query must contain at least one non-whitespace character.");
@@ -34,6 +41,16 @@ export function SearchBar({
 
     setError(null);
     await onSearch(trimmed);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitQuery(query);
+  };
+
+  const handleSuggestionClick = async (text: string) => {
+    setQuery(text);
+    await submitQuery(text);
   };
 
   return (
@@ -67,6 +84,25 @@ export function SearchBar({
           {isSearching ? "Searching..." : "Resurrect"}
         </Button>
       </form>
+
+      <div
+        role="group"
+        aria-label="Suggested questions"
+        className="flex flex-wrap gap-2"
+      >
+        {QUERY_SUGGESTIONS.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            data-testid={`query-suggestion-${s.id}`}
+            disabled={isSearching}
+            onClick={() => handleSuggestionClick(s.text)}
+            className="rounded-full border border-specter-700 bg-ghost-crypt px-3 py-1 text-xs text-specter-200 transition-colors hover:border-specter-400 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {s.text}
+          </button>
+        ))}
+      </div>
 
       {error && (
         <div

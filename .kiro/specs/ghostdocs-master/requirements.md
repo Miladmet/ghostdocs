@@ -252,6 +252,9 @@ The following table is the authoritative reference for Playwright E2E selectors.
 | Time Capsule export button | `capsule-export-button` | Triggers JSON export |
 | Time Capsule import input | `capsule-import-input` | Hidden file input for capsule import |
 | Ingestion progress indicator | `ingestion-progress-{slug}` | Per-document progress during ingest |
+| Load Sample Vault button | `load-sample-vault-button` | Loads the synthetic in-memory sample vault (no network) |
+| Suggested question: Q3 budget | `query-suggestion-q3-budget` | One-click suggested question under the search bar |
+| Suggested question: security constitution | `query-suggestion-security-constitution` | One-click suggested question under the search bar |
 
 ---
 
