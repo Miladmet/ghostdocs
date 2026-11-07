@@ -1,5 +1,6 @@
 // workers/parser.worker.ts
 import { getDocument, GlobalWorkerOptions, PasswordException } from 'pdfjs-dist';
+import { resolvePdfWorkerSrc } from '../lib/pdf-worker-src';
 import type {
   ParseDocumentRequest,
   ParseCompleteMessage,
@@ -9,14 +10,24 @@ import type {
 } from './types';
 
 // Set the worker source before any PDF operations.
-// The pdf.worker.min.mjs file is served from public/ (copied by next.config.ts).
-const workerBasePath =
-  typeof self !== 'undefined' &&
-  self.location &&
-  self.location.pathname.startsWith('/ghostdocs')
-    ? '/ghostdocs'
-    : '';
-GlobalWorkerOptions.workerSrc = `${workerBasePath}/pdf.worker.min.mjs`;
+// pdf.worker.min.mjs is served from public/, so under a base path (GitHub Pages:
+// /ghostdocs) it lives at <basePath>/pdf.worker.min.mjs. NEXT_PUBLIC_BASE_PATH is
+// inlined by Next at build time; the pathname check is a fallback.
+//
+// Note: PDF.js logs "Warning: Setting up fake worker." here. This is expected and
+// harmless. getDocument runs inside our own dedicated Web Worker, so pdf.js tries
+// to start a nested worker, but getWorkerSrc() references window.location, which
+// does not exist in a worker context. The error is caught and pdf.js falls back to
+// its in-thread ("fake") worker, loading workerSrc via dynamic import(); that is why
+// workerSrc must still point at the base-path-correct URL. Parsing therefore runs
+// on this worker's thread, still off the main thread, so Req 1.4 / 9.4 (<= 50 ms
+// main-thread blocking) are unaffected. Based on the pdfjs-dist 6.5.438 source
+// (PDFWorker.#initialize / #setupFakeWorker / getWorkerSrc in build/pdf.mjs);
+// recheck when upgrading pdfjs-dist.
+GlobalWorkerOptions.workerSrc = resolvePdfWorkerSrc(
+  process.env.NEXT_PUBLIC_BASE_PATH,
+  typeof self !== 'undefined' && self.location ? self.location.pathname : undefined,
+);
 
 // ─── Main message handler ──────────────────────────────────────────────────
 

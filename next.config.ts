@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import * as fs from "fs";
 import * as path from "path";
+import { CONTENT_SECURITY_POLICY } from "./lib/csp";
 
 // =============================================================================
 // Content Security Policy
@@ -23,16 +24,7 @@ import * as path from "path";
 //   object-src 'none'               — no plugins
 //   base-uri 'self'                 — prevent base-tag hijacking
 //
-const CSP =
-  "default-src 'self'; " +
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; " +
-  "worker-src 'self' blob:; " +
-  "connect-src 'self'; " +
-  "style-src 'self' 'unsafe-inline'; " +
-  "img-src 'self' data: blob:; " +
-  "font-src 'self'; " +
-  "object-src 'none'; " +
-  "base-uri 'self';";
+const CSP = CONTENT_SECURITY_POLICY;
 
 // =============================================================================
 // Custom webpack plugin — copies PDF.js worker to public/

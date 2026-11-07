@@ -97,6 +97,16 @@
         "executionId": "f2511c02-e669-4cf0-8996-00ad8311dd56",
         "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
         "timestamp": 1794076838493
+      },
+      {
+        "executionId": "39b081b9-03a9-4438-8805-e9f60bd68dbf",
+        "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
+        "timestamp": 1794079725645
+      },
+      {
+        "executionId": "39b081b9-03a9-4438-8805-e9f60bd68dbf",
+        "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
+        "timestamp": 1794080094962
       }
     ],
     "2.1 Implement `tailwind.config.ts` with all Kiroween design tokens": [
@@ -182,6 +192,26 @@
         "executionId": "3530950e-da29-4ccb-9241-a5120c4cd62a",
         "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
         "timestamp": 1793567028207
+      },
+      {
+        "executionId": "c804ff17-457e-4484-9a1c-0f250ea38fe3",
+        "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
+        "timestamp": 1794080332304
+      },
+      {
+        "executionId": "c804ff17-457e-4484-9a1c-0f250ea38fe3",
+        "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
+        "timestamp": 1794080605035
+      },
+      {
+        "executionId": "f9035987-b618-4b00-9ef8-cc0f08c8829c",
+        "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
+        "timestamp": 1794080749569
+      },
+      {
+        "executionId": "f9035987-b618-4b00-9ef8-cc0f08c8829c",
+        "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
+        "timestamp": 1794080812237
       }
     ],
     "6.1 Create `lib/slug.ts` implementing the slug derivation algorithm": [
@@ -465,6 +495,16 @@
         "executionId": "3530950e-da29-4ccb-9241-a5120c4cd62a",
         "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
         "timestamp": 1793561492095
+      },
+      {
+        "executionId": "3005f04d-bd73-4e76-b8f8-bacbe708bddf",
+        "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
+        "timestamp": 1794078567146
+      },
+      {
+        "executionId": "3005f04d-bd73-4e76-b8f8-bacbe708bddf",
+        "chatSessionId": "sess_19b85d8f-5180-4a08-b58f-26ac3ce58a29",
+        "timestamp": 1794079110971
       }
     ],
     "14. Checkpoint — Build verification": [

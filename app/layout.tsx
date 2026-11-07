@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { CONTENT_SECURITY_POLICY } from "@/lib/csp";
 
 export const metadata: Metadata = {
   title: "GhostDocs",
@@ -13,6 +14,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
+      <head>
+        <meta
+          httpEquiv="Content-Security-Policy"
+          content={CONTENT_SECURITY_POLICY}
+        />
+      </head>
       <body suppressHydrationWarning>{children}</body>
     </html>
   );
